@@ -4,9 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Harbor Zen</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Inter:wght@300;400&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
   <style>
     * {
       margin: 0;
@@ -15,18 +13,11 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    :root {
-      --scene-begin: #e8d5b7;
-      --scene-deep: #a8c8ec;
-      --scene-flow: #b8d4a8;
-      --scene-unwind: #d4b8c8;
-    }
-
     html, body {
       height: 100%;
       overflow: hidden;
       background: #000;
-      font-family: 'Inter', sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       color: #fff;
       touch-action: pan-y;
     }
@@ -68,10 +59,10 @@
       transition: color 0.6s ease;
     }
 
-    .scene-name.begin { color: var(--scene-begin); }
-    .scene-name.deep { color: var(--scene-deep); }
-    .scene-name.flow { color: var(--scene-flow); }
-    .scene-name.unwind { color: var(--scene-unwind); }
+    .scene-name.begin { color: #e8d5b7; }
+    .scene-name.deep { color: #a8c8ec; }
+    .scene-name.flow { color: #b8d4a8; }
+    .scene-name.unwind { color: #d4b8c8; }
 
     .player-container {
       position: relative;
@@ -100,16 +91,11 @@
       transition: stroke-dashoffset 0.1s linear, stroke 0.6s ease;
     }
 
-    .progress-ring-fill.begin { stroke: var(--scene-begin); }
-    .progress-ring-fill.deep { stroke: var(--scene-deep); }
-    .progress-ring-fill.flow { stroke: var(--scene-flow); }
-    .progress-ring-fill.unwind { stroke: var(--scene-unwind); }
-
     .play-button {
       position: absolute;
       inset: 20px;
       border-radius: 50%;
-      border: none;
+      border: 1px solid rgba(255,255,255,0.1);
       background: rgba(255,255,255,0.03);
       backdrop-filter: blur(20px);
       cursor: pointer;
@@ -117,7 +103,6 @@
       align-items: center;
       justify-content: center;
       transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      border: 1px solid rgba(255,255,255,0.1);
     }
 
     .play-button:hover {
@@ -147,22 +132,12 @@
       50% { opacity: 0.7; }
     }
 
-    .play-button.begin { box-shadow: 0 0 60px -20px var(--scene-begin); }
-    .play-button.deep { box-shadow: 0 0 60px -20px var(--scene-deep); }
-    .play-button.flow { box-shadow: 0 0 60px -20px var(--scene-flow); }
-    .play-button.unwind { box-shadow: 0 0 60px -20px var(--scene-unwind); }
-
     .play-icon {
       width: 32px;
       height: 32px;
       fill: currentColor;
       opacity: 0.9;
       transition: all 0.3s ease;
-    }
-
-    .play-button:hover .play-icon {
-      opacity: 1;
-      transform: scale(1.1);
     }
 
     .track-info {
@@ -251,26 +226,6 @@
       color: rgba(255,255,255,0.5);
       text-transform: uppercase;
     }
-
-    @media (max-width: 480px) {
-      .scene-name {
-        font-size: 28px;
-      }
-      
-      .player-container {
-        width: 120px;
-        height: 120px;
-      }
-      
-      .play-button {
-        inset: 16px;
-      }
-      
-      .play-icon {
-        width: 28px;
-        height: 28px;
-      }
-    }
   </style>
 </head>
 <body>
@@ -356,14 +311,10 @@
     let currentSceneIndex = 0;
     let currentTrackIndex = 0;
     let isPlaying = false;
-    let audio = new Audio();
-    audio.volume = 0.7;
-    let audioContext = null;
-    let analyser = null;
-    let dataArray = null;
-    let animationId = null;
+    let currentHowl = null;
     let smoothedIntensity = 0;
     let smoothedScale = 1;
+    let animationId = null;
 
     const sceneIndicator = document.getElementById('sceneIndicator');
     const sceneName = document.getElementById('sceneName');
@@ -383,12 +334,11 @@
     let touchStartY = 0;
     let touchStartTime = 0;
     let longPressTimer;
-    const preloadedAudio = {};
-    let loadingProgress = 0;
-    let totalFilesToLoad = 0;
 
-    // Preload all music files using fetch for reliable caching
-    async function preloadAllMusic() {
+    // Preload all audio using Howler
+    const preloadedSounds = {};
+    
+    function preloadAllMusic() {
       const allFiles = [];
       scenes.forEach(scene => {
         scene.tracks.forEach(track => {
@@ -398,47 +348,21 @@
         });
       });
 
-      totalFilesToLoad = allFiles.length;
-      
-      // Load files concurrently with retry logic
-      const loadPromises = allFiles.map(file => loadAudioFile(file));
-      
-      try {
-        await Promise.all(loadPromises);
-        console.log('All audio files preloaded successfully');
-      } catch (error) {
-        console.error('Some files failed to preload:', error);
-      }
-    }
-
-    async function loadAudioFile(filename, retries = 3) {
-      for (let i = 0; i < retries; i++) {
-        try {
-          const response = await fetch(`music/${filename}`);
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+      allFiles.forEach(file => {
+        preloadedSounds[file] = new Howl({
+          src: [`music/${file}`],
+          html5: true, // Force HTML5 Audio for better streaming
+          preload: true,
+          volume: 0.8,
+          onload: function() {
+            console.log(`Loaded: ${file}`);
+          },
+          onloaderror: function(id, err) {
+            console.error(`Failed to load ${file}:`, err);
           }
-          
-          const blob = await response.blob();
-          const blobUrl = URL.createObjectURL(blob);
-          preloadedAudio[filename] = blobUrl;
-          
-          loadingProgress++;
-          return;
-        } catch (error) {
-          console.warn(`Failed to load ${filename}, attempt ${i + 1}/${retries}`, error);
-          if (i === retries - 1) {
-            // Last retry failed, use direct URL as fallback
-            preloadedAudio[filename] = `music/${filename}`;
-          }
-          // Wait before retrying (exponential backoff)
-          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
-        }
-      }
+        });
+      });
     }
-
-    // Start preloading on page load
-    preloadAllMusic();
 
     function getSceneByTime() {
       const hour = new Date().getHours();
@@ -466,28 +390,45 @@
       trackName.textContent = track.title;
       trackArtist.textContent = track.artist;
       
-      // Stop current audio before switching
-      if (isPlaying) {
-        audio.pause();
+      // Stop current playback
+      if (currentHowl) {
+        currentHowl.stop();
+        currentHowl.unload();
       }
       
-      // Use preloaded blob URL for smooth playback
-      const audioUrl = preloadedAudio[track.file];
-      if (audioUrl) {
-        audio.src = audioUrl;
+      // Use preloaded Howl or create new one
+      const file = track.file;
+      if (preloadedSounds[file]) {
+        currentHowl = preloadedSounds[file];
       } else {
-        // Fallback to direct URL if not preloaded yet
-        audio.src = `music/${track.file}`;
+        currentHowl = new Howl({
+          src: [`music/${file}`],
+          html5: true,
+          volume: 0.8
+        });
       }
       
-      // Ensure audio is ready before playing
-      audio.load();
+      // Set up event listeners
+      currentHowl.on('end', onTrackEnd);
+      currentHowl.on('load', () => {
+        playBtn.classList.remove('loading');
+      });
+      currentHowl.on('loaderror', (id, err) => {
+        console.error('Load error:', err);
+        playBtn.classList.remove('loading');
+      });
     }
 
-    let isBuffering = false;
+    function onTrackEnd() {
+      currentTrackIndex = (currentTrackIndex + 1) % scenes[currentSceneIndex].tracks.length;
+      loadTrack();
+      if (isPlaying) {
+        startPlayback();
+      }
+    }
 
     function togglePlay() {
-      if (isBuffering) return; // Prevent clicks while buffering
+      if (playBtn.classList.contains('loading')) return;
       
       isPlaying = !isPlaying;
       
@@ -500,45 +441,49 @@
       resetHideTimer();
     }
 
-    async function startPlayback() {
+    function startPlayback() {
       playBtn.classList.add('loading');
       
-      try {
-        // Wait for audio to be ready
-        if (audio.readyState < 3) {
-          isBuffering = true;
-          await waitForAudioReady();
-        }
-        
-        initAudioContext();
-        await audio.play();
-        
-        playIcon.style.display = 'none';
-        pauseIcon.style.display = 'block';
-        playBtn.classList.remove('loading');
-        playBtn.classList.add('playing');
-        showTrackInfo();
-        
-        if (animationId) cancelAnimationFrame(animationId);
-        visualize();
-      } catch (error) {
-        console.error('Playback failed:', error);
-        isPlaying = false;
-        playBtn.classList.remove('loading');
-        playIcon.style.display = 'block';
-        pauseIcon.style.display = 'none';
-      } finally {
-        isBuffering = false;
+      if (!currentHowl) {
+        loadTrack();
+      }
+      
+      // Check if already loaded
+      if (currentHowl.state() === 'loaded') {
+        currentHowl.play();
+        onPlaybackStart();
+      } else {
+        // Wait for load
+        currentHowl.once('load', () => {
+          currentHowl.play();
+          onPlaybackStart();
+        });
       }
     }
 
+    function onPlaybackStart() {
+      playBtn.classList.remove('loading');
+      playIcon.style.display = 'none';
+      pauseIcon.style.display = 'block';
+      playBtn.classList.add('playing');
+      showTrackInfo();
+      
+      if (animationId) cancelAnimationFrame(animationId);
+      visualize();
+    }
+
     function pausePlayback() {
+      if (currentHowl) {
+        currentHowl.pause();
+      }
       playIcon.style.display = 'block';
       pauseIcon.style.display = 'none';
       playBtn.classList.remove('playing');
-      audio.pause();
       if (animationId) cancelAnimationFrame(animationId);
-      // Reset visual effects
+      resetVisualEffects();
+    }
+
+    function resetVisualEffects() {
       playBtn.style.transform = '';
       playBtn.style.boxShadow = '';
       playBtn.style.borderColor = '';
@@ -547,150 +492,6 @@
       progressRing.style.filter = '';
       smoothedIntensity = 0;
       smoothedScale = 1;
-    }
-
-    function waitForAudioReady() {
-      return new Promise((resolve, reject) => {
-        const checkReady = () => {
-          if (audio.readyState >= 3) {
-            resolve();
-          } else if (audio.error) {
-            reject(audio.error);
-          } else {
-            setTimeout(checkReady, 100);
-          }
-        };
-        checkReady();
-        
-        // Timeout after 10 seconds
-        setTimeout(() => reject(new Error('Audio load timeout')), 10000);
-      });
-    }
-
-    function initAudioContext() {
-      if (!audioContext) {
-        // Create audio context with optimal latency hint
-        audioContext = new (window.AudioContext || window.webkitAudioContext)({
-          latencyHint: 'playback'
-        });
-        
-        // Create nodes
-        analyser = audioContext.createAnalyser();
-        analyser.fftSize = 512;
-        analyser.smoothingTimeConstant = 0.85;
-        analyser.minDecibels = -90;
-        analyser.maxDecibels = -10;
-        
-        // Add compressor to prevent clipping/distortion
-        const compressor = audioContext.createDynamicsCompressor();
-        compressor.threshold.value = -24;  // Start compressing at -24dB
-        compressor.knee.value = 30;        // Soft knee for smooth transition
-        compressor.ratio.value = 12;       // Strong compression ratio
-        compressor.attack.value = 0.003;   // Fast attack (3ms)
-        compressor.release.value = 0.25;   // Medium release (250ms)
-        
-        // Add gain node for volume control
-        const gainNode = audioContext.createGain();
-        gainNode.gain.value = 0.9;         // Slight headroom to prevent clipping
-        
-        // Connect the chain: source -> analyser -> compressor -> gain -> destination
-        const source = audioContext.createMediaElementSource(audio);
-        source.connect(analyser);
-        analyser.connect(compressor);
-        compressor.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        dataArray = new Uint8Array(analyser.frequencyBinCount);
-        
-        // Store references for cleanup if needed
-        audioContext._compressor = compressor;
-        audioContext._gainNode = gainNode;
-      }
-      if (audioContext.state === 'suspended') {
-        audioContext.resume();
-      }
-    }
-
-    function visualize() {
-      if (!isPlaying || !analyser) return;
-      
-      analyser.getByteFrequencyData(dataArray);
-      
-      // Piano-friendly frequency analysis
-      // Piano range: A0(27.5Hz) to C8(4186Hz) - mostly in mid-range
-      
-      // Get bass frequencies (0-200Hz, bins 0-5) - for left hand piano
-      let bassSum = 0;
-      for (let i = 0; i < 6; i++) {
-        bassSum += dataArray[i];
-      }
-      const bassIntensity = bassSum / 6 / 255;
-      
-      // Get mid frequencies (200-2000Hz, bins 6-50) - MAIN PIANO RANGE
-      let midSum = 0;
-      for (let i = 6; i < 50; i++) {
-        midSum += dataArray[i];
-      }
-      const midIntensity = midSum / (50 - 6) / 255;
-      
-      // Get high frequencies (2000Hz+, bins 51+) - piano harmonics
-      let highSum = 0;
-      for (let i = 50; i < dataArray.length; i++) {
-        highSum += dataArray[i];
-      }
-      const highIntensity = highSum / (dataArray.length - 50) / 255;
-      
-      // Combined intensity - weighted toward mid-range for piano
-      let intensity = (bassIntensity * 0.3 + midIntensity * 0.5 + highIntensity * 0.2);
-      
-      // Exponential amplification for more sensitivity at low volumes
-      // Piano is often gentle, so we need to boost lower intensities
-      intensity = Math.pow(intensity, 0.6);
-      
-      // Dynamic scale with more dramatic range
-      const baseScale = 1;
-      const maxScale = 1.25; // Increased from 1.15
-      const scale = baseScale + (intensity * (maxScale - baseScale));
-      
-      // Dynamic color with more sensitivity
-      const baseHue = {
-        begin: 35,
-        deep: 210,
-        flow: 100,
-        unwind: 320
-      }[scenes[currentSceneIndex].id] || 200;
-      
-      // More dramatic hue shifts based on bass
-      const hueShift = Math.sin(Date.now() / 2000) * 15 + bassIntensity * 25;
-      const hue = baseHue + hueShift;
-      
-      // Higher base saturation for piano to make colors pop
-      const saturation = 45 + (intensity * 55); // 45% to 100%
-      const lightness = 55 + (midIntensity * 35); // 55% to 90%
-      
-      // Smooth transitions using lerp (linear interpolation)
-      const lerpFactor = 0.12; // Adjust for more/less smoothing (0.1 = smooth, 0.3 = responsive)
-      smoothedIntensity = smoothedIntensity + (intensity - smoothedIntensity) * lerpFactor;
-      smoothedScale = smoothedScale + (scale - smoothedScale) * lerpFactor;
-      
-      const glowColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-      
-      // Much more dramatic glow range based on smoothed intensity
-      const glowIntensity = 25 + (smoothedIntensity * 100); // 25 to 125
-      const glowBlur = 5 + (smoothedIntensity * 15); // 5 to 20
-      
-      // Apply dynamic styles with smoothed values
-      playBtn.style.transform = `scale(${smoothedScale})`;
-      playBtn.style.boxShadow = `0 0 ${glowIntensity}px -${glowBlur}px ${glowColor}`;
-      playBtn.style.borderColor = glowColor;
-      
-      progressRing.style.stroke = glowColor;
-      progressRing.style.filter = `drop-shadow(0 0 ${smoothedIntensity * 15}px ${glowColor})`;
-      
-      // Add subtle opacity pulsing for extra life
-      playBtn.style.opacity = 0.85 + (smoothedIntensity * 0.15);
-      
-      animationId = requestAnimationFrame(visualize);
     }
 
     function play() {
@@ -734,40 +535,55 @@
     }
 
     function updateProgress() {
-      if (!audio.duration) return;
-      const progress = audio.currentTime / audio.duration;
+      if (!currentHowl || !isPlaying) return;
+      const progress = currentHowl.seek() / currentHowl.duration();
       const circumference = 440;
       const offset = circumference - (progress * circumference);
       progressRing.style.strokeDashoffset = offset;
     }
 
-    function showVolume() {
-      volumeOverlay.classList.add('active');
-      volumeFill.style.height = (audio.volume * 100) + '%';
-    }
-
-    function hideVolume() {
-      volumeOverlay.classList.remove('active');
-    }
-
-    function setVolumeFromTouch(clientY) {
-      const rect = document.getElementById('volumeSlider').getBoundingClientRect();
-      const percent = 1 - ((clientY - rect.top) / rect.height);
-      audio.volume = Math.max(0, Math.min(1, percent));
-      volumeFill.style.height = (audio.volume * 100) + '%';
+    // Simplified visualization without audio context
+    function visualize() {
+      if (!isPlaying) return;
+      
+      // Update progress ring
+      updateProgress();
+      
+      // Gentle breathing animation (not tied to audio)
+      const time = Date.now() / 1000;
+      const breatheScale = 1 + Math.sin(time * 0.5) * 0.03;
+      const breatheOpacity = 0.85 + Math.sin(time * 0.5) * 0.1;
+      
+      // Get scene color
+      const baseColor = {
+        begin: [232, 213, 183],
+        deep: [168, 200, 236],
+        flow: [184, 212, 168],
+        unwind: [212, 184, 200]
+      }[scenes[currentSceneIndex].id] || [168, 200, 236];
+      
+      const glowColor = `rgba(${baseColor.join(',')}, ${0.4 + Math.sin(time) * 0.2})`;
+      
+      playBtn.style.transform = `scale(${breatheScale})`;
+      playBtn.style.boxShadow = `0 0 ${60 + Math.sin(time) * 20}px -10px ${glowColor}`;
+      playBtn.style.borderColor = glowColor;
+      playBtn.style.opacity = breatheOpacity;
+      progressRing.style.stroke = `rgb(${baseColor.join(',')})`;
+      
+      animationId = requestAnimationFrame(visualize);
     }
 
     // Event Listeners
     playBtn.addEventListener('click', togglePlay);
 
-    // Touch events for swipe and long press
+    // Touch events
     document.addEventListener('touchstart', (e) => {
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
       touchStartTime = Date.now();
       
       longPressTimer = setTimeout(() => {
-        showVolume();
+        volumeOverlay.classList.add('active');
       }, 600);
     }, { passive: true });
 
@@ -779,70 +595,12 @@
       clearTimeout(longPressTimer);
       
       if (volumeOverlay.classList.contains('active')) {
-        setTimeout(hideVolume, 1500);
+        setTimeout(() => volumeOverlay.classList.remove('active'), 1500);
         return;
       }
 
       const touchEndX = e.changedTouches[0].clientX;
-      const touchEndY = e.changedTouches[0].clientY;
       const diffX = touchStartX - touchEndX;
-      const diffY = touchStartY - touchEndY;
-      const duration = Date.now() - touchStartTime;
-
-      // Detect swipe (minimum 50px movement)
-      if (Math.abs(diffX) > 50 && Math.abs(diffX) > Math.abs(diffY)) {
-        if (diffX > 0) {
-          nextScene();
-        } else {
-          prevScene();
-        }
-      } else if (duration < 200 && Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
-        // Tap - show UI
-        showUI();
-      }
-    }, { passive: true });
-
-    // Volume slider touch events
-    let isDraggingVolume = false;
-
-    volumeOverlay.addEventListener('touchstart', (e) => {
-      isDraggingVolume = true;
-      setVolumeFromTouch(e.touches[0].clientY);
-    }, { passive: true });
-
-    volumeOverlay.addEventListener('touchmove', (e) => {
-      if (isDraggingVolume) {
-        setVolumeFromTouch(e.touches[0].clientY);
-      }
-    }, { passive: true });
-
-    volumeOverlay.addEventListener('touchend', () => {
-      isDraggingVolume = false;
-    });
-
-    // Mouse events for desktop
-    let mouseDown = false;
-
-    document.addEventListener('mousedown', (e) => {
-      mouseDown = true;
-      touchStartX = e.clientX;
-      touchStartTime = Date.now();
-      
-      longPressTimer = setTimeout(() => {
-        showVolume();
-      }, 600);
-    });
-
-    document.addEventListener('mouseup', (e) => {
-      mouseDown = false;
-      clearTimeout(longPressTimer);
-      
-      if (volumeOverlay.classList.contains('active')) {
-        setTimeout(hideVolume, 1500);
-        return;
-      }
-
-      const diffX = touchStartX - e.clientX;
       const duration = Date.now() - touchStartTime;
 
       if (Math.abs(diffX) > 50) {
@@ -851,63 +609,31 @@
         } else {
           prevScene();
         }
-      } else if (duration < 200 && e.target === document.body || e.target.classList.contains('app')) {
+      } else if (duration < 200 && Math.abs(diffX) < 10) {
         showUI();
       }
-    });
+    }, { passive: true });
 
-    // Audio events
-    audio.addEventListener('timeupdate', updateProgress);
-    
-    audio.addEventListener('waiting', () => {
-      // Audio is buffering
-      isBuffering = true;
-      playBtn.classList.add('loading');
-    });
-    
-    audio.addEventListener('canplay', () => {
-      // Audio can start playing
-      if (isBuffering) {
-        isBuffering = false;
-        playBtn.classList.remove('loading');
+    // Volume control
+    function setVolumeFromTouch(clientY) {
+      const rect = document.getElementById('volumeSlider').getBoundingClientRect();
+      const percent = 1 - ((clientY - rect.top) / rect.height);
+      const volume = Math.max(0, Math.min(1, percent));
+      if (currentHowl) {
+        currentHowl.volume(volume);
       }
-    });
-    
-    audio.addEventListener('canplaythrough', () => {
-      // Audio can play without further buffering
-      isBuffering = false;
-      playBtn.classList.remove('loading');
-    });
-    
-    audio.addEventListener('ended', () => {
-      currentTrackIndex = (currentTrackIndex + 1) % scenes[currentSceneIndex].tracks.length;
-      loadTrack();
-      if (isPlaying) {
-        isBuffering = false;
-        startPlayback();
-      }
-    });
-    
-    audio.addEventListener('error', (e) => {
-      console.error('Audio error:', e);
-      isBuffering = false;
-      playBtn.classList.remove('loading');
-      // Try to recover by reloading current track
-      if (isPlaying) {
-        setTimeout(() => {
-          loadTrack();
-          startPlayback();
-        }, 1000);
-      }
-    });
-    
-    audio.addEventListener('stalled', () => {
-      console.warn('Audio stalled - network issue');
-      isBuffering = true;
-      playBtn.classList.add('loading');
-    });
+      volumeFill.style.height = (volume * 100) + '%';
+    }
 
-    // Keyboard shortcuts
+    volumeOverlay.addEventListener('touchstart', (e) => {
+      setVolumeFromTouch(e.touches[0].clientY);
+    }, { passive: true });
+
+    volumeOverlay.addEventListener('touchmove', (e) => {
+      setVolumeFromTouch(e.touches[0].clientY);
+    }, { passive: true });
+
+    // Keyboard
     document.addEventListener('keydown', (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
@@ -920,6 +646,7 @@
     });
 
     // Initialize
+    preloadAllMusic();
     loadScene(getSceneByTime());
     resetHideTimer();
   </script>
