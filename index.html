@@ -806,6 +806,16 @@
       frameCount++;
       if (frameCount % 60 === 0) {
         console.log('Visualize running, analyser:', !!analyser, 'dataArray:', !!dataArray);
+        console.log('Analysis audio state:', analysisAudio ? {
+          readyState: analysisAudio.readyState,
+          paused: analysisAudio.paused,
+          currentTime: analysisAudio.currentTime,
+          volume: analysisAudio.volume
+        } : 'null');
+        // Log first 10 data values
+        if (dataArray) {
+          console.log('DataArray first 10:', Array.from(dataArray.slice(0, 10)));
+        }
       }
       
       // Update progress ring
