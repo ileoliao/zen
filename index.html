@@ -569,8 +569,12 @@
 
     // Preload all audio using Howler
     const preloadedSounds = {};
+    let musicPreloaded = false;
 
     function preloadAllMusic() {
+      if (musicPreloaded) return;
+      musicPreloaded = true;
+
       const allFiles = [];
       scenes.forEach(scene => {
         scene.tracks.forEach(track => {
@@ -646,8 +650,30 @@
       visualIntensity = 0;
       bassHistory = [];
 
-      // Use preloaded Howl or create new one
+      // Use preloaded Howl if available
+      // Don't create new Howl here to avoid creating AudioContext before user gesture (iOS)
       const file = track.file;
+      if (preloadedSounds[file]) {
+        currentHowl = preloadedSounds[file];
+      } else {
+        // Will be created in ensureCurrentHowl() when playback starts
+        currentHowl = null;
+      }
+
+      // Register onend callback so tracks auto-advance
+      if (currentHowl) {
+        currentHowl.off('end');
+        currentHowl.on('end', onTrackEnd);
+      }
+    }
+
+    // Create Howl on demand (only called during user interaction)
+    function ensureCurrentHowl() {
+      if (currentHowl) return;
+      const scene = scenes[currentSceneIndex];
+      const track = scene.tracks[currentTrackIndex];
+      const file = track.file;
+
       if (preloadedSounds[file]) {
         currentHowl = preloadedSounds[file];
       } else {
@@ -658,8 +684,7 @@
         });
       }
 
-      // Register onend callback so tracks auto-advance
-      currentHowl.off('end'); // Remove previous listeners to avoid duplicates
+      currentHowl.off('end');
       currentHowl.on('end', onTrackEnd);
     }
 
@@ -680,13 +705,13 @@
         dataArray = new Uint8Array(analyser.frequencyBinCount);
       }
 
-      // Connect analyser into the master audio chain (once)
-      // Howler.masterGain → analyser → ctx.destination
+      // Connect analyser as a BRANCH (don't disconnect masterGain!)
+      // Existing: Howler.masterGain → ctx.destination (keep for audio output)
+      // Added:   Howler.masterGain → analyser (for visualization data only)
+      // This way audio always reaches speakers even if analyser fails
       if (analyser && Howler.masterGain && !analyserConnected) {
         try {
-          Howler.masterGain.disconnect();
           Howler.masterGain.connect(analyser);
-          analyser.connect(Howler.ctx.destination);
           analyserConnected = true;
         } catch (e) {
           console.warn('Failed to connect analyser:', e);
@@ -711,7 +736,7 @@
       resetHideTimer();
     }
 
-    async function startPlayback() {
+    function startPlayback() {
       playBtn.classList.add('loading');
 
       // Force unlock audio on iOS - this is critical
@@ -721,17 +746,17 @@
       }
 
       // Resume AudioContext if suspended (required on iOS)
-      // MUST await this - iOS requires it to complete before playing
+      // IMPORTANT: Call resume() synchronously within user gesture call stack
+      // Do NOT await - iOS requires play() to be in the same sync call stack
       if (Howler.ctx && Howler.ctx.state === 'suspended') {
-        try {
-          await Howler.ctx.resume();
-        } catch (e) {
-          console.warn('Failed to resume AudioContext:', e);
-        }
+        Howler.ctx.resume().catch(e => console.warn('Failed to resume AudioContext:', e));
       }
 
+      // Ensure music is preloaded (first interaction)
+      preloadAllMusic();
+
       if (!currentHowl) {
-        loadTrack();
+        ensureCurrentHowl();
       }
 
       // Initialize audio context for analysis
@@ -754,14 +779,11 @@
       }
     }
 
-    async function playAudioAndStart() {
+    function playAudioAndStart() {
       // Ensure Web Audio context is resumed on iOS
+      // Call synchronously - don't await
       if (Howler.ctx && Howler.ctx.state === 'suspended') {
-        try {
-          await Howler.ctx.resume();
-        } catch (e) {
-          console.warn('Failed to resume AudioContext:', e);
-        }
+        Howler.ctx.resume().catch(e => console.warn('Failed to resume AudioContext:', e));
       }
 
       // Analyser is already connected via masterGain in initAudioContext()
@@ -1209,8 +1231,8 @@
       }
     });
 
-    // Initialize
-    preloadAllMusic();
+    // Initialize - don't preload here, defer to first user interaction
+    // This avoids creating AudioContext before user gesture on iOS
     loadScene(getSceneByTime());
     resetHideTimer();
     updatePomodoroDisplay(); // Initialize Pomodoro timer display
@@ -1218,21 +1240,20 @@
 
     // Unlock audio on iOS - must happen on first user interaction
     let audioUnlocked = false;
-    async function unlockAudio() {
+    function unlockAudio() {
       if (audioUnlocked) return;
       audioUnlocked = true;
 
-      // Force Howler to create AudioContext
+      // Force Howler to create AudioContext synchronously in user gesture
       Howler.volume(0.8);
 
-      // Resume if suspended - await to ensure completion
+      // Resume synchronously - don't await
       if (Howler.ctx && Howler.ctx.state === 'suspended') {
-        try {
-          await Howler.ctx.resume();
-        } catch (e) {
-          console.warn('Failed to resume AudioContext:', e);
-        }
+        Howler.ctx.resume().catch(e => console.warn('Failed to resume AudioContext:', e));
       }
+
+      // Preload all music now that AudioContext exists
+      preloadAllMusic();
 
       console.log('Audio unlocked');
     }
