@@ -229,6 +229,7 @@
       justify-content: center;
       transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       appearance: none;
+      -webkit-tap-highlight-color: transparent;
       color: #fff;
       box-shadow: none;
       outline: none;
@@ -839,6 +840,9 @@
       togglePomodoro();
 
       resetHideTimer();
+
+      // Forcefully remove focus from button so iOS doesn't get stuck in a pseudo-hover/active state
+      playBtn.blur();
     }
 
     function startPlayback() {
