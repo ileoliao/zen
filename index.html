@@ -133,6 +133,20 @@
       transition: transform 0.1s ease-out, box-shadow 0.1s ease-out;
     }
 
+    .play-button.loading {
+      cursor: wait;
+    }
+
+    .play-button.loading .play-icon {
+      opacity: 0.3;
+      animation: pulse-loading 1s ease-in-out infinite;
+    }
+
+    @keyframes pulse-loading {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.7; }
+    }
+
     .play-button.begin { box-shadow: 0 0 60px -20px var(--scene-begin); }
     .play-button.deep { box-shadow: 0 0 60px -20px var(--scene-deep); }
     .play-button.flow { box-shadow: 0 0 60px -20px var(--scene-flow); }
@@ -370,9 +384,11 @@
     let touchStartTime = 0;
     let longPressTimer;
     const preloadedAudio = {};
+    let loadingProgress = 0;
+    let totalFilesToLoad = 0;
 
-    // Preload all music files
-    function preloadAllMusic() {
+    // Preload all music files using fetch for reliable caching
+    async function preloadAllMusic() {
       const allFiles = [];
       scenes.forEach(scene => {
         scene.tracks.forEach(track => {
@@ -382,12 +398,43 @@
         });
       });
 
-      allFiles.forEach(file => {
-        const audioEl = new Audio();
-        audioEl.preload = 'auto';
-        audioEl.src = `music/${file}`;
-        preloadedAudio[file] = audioEl;
-      });
+      totalFilesToLoad = allFiles.length;
+      
+      // Load files concurrently with retry logic
+      const loadPromises = allFiles.map(file => loadAudioFile(file));
+      
+      try {
+        await Promise.all(loadPromises);
+        console.log('All audio files preloaded successfully');
+      } catch (error) {
+        console.error('Some files failed to preload:', error);
+      }
+    }
+
+    async function loadAudioFile(filename, retries = 3) {
+      for (let i = 0; i < retries; i++) {
+        try {
+          const response = await fetch(`music/${filename}`);
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+          
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          preloadedAudio[filename] = blobUrl;
+          
+          loadingProgress++;
+          return;
+        } catch (error) {
+          console.warn(`Failed to load ${filename}, attempt ${i + 1}/${retries}`, error);
+          if (i === retries - 1) {
+            // Last retry failed, use direct URL as fallback
+            preloadedAudio[filename] = `music/${filename}`;
+          }
+          // Wait before retrying (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
+        }
+      }
     }
 
     // Start preloading on page load
@@ -419,45 +466,105 @@
       trackName.textContent = track.title;
       trackArtist.textContent = track.artist;
       
-      // Use preloaded audio if available, otherwise set src
-      if (preloadedAudio[track.file]) {
-        // Clone the preloaded audio to avoid sharing the same element
-        audio.src = preloadedAudio[track.file].src;
+      // Stop current audio before switching
+      if (isPlaying) {
+        audio.pause();
+      }
+      
+      // Use preloaded blob URL for smooth playback
+      const audioUrl = preloadedAudio[track.file];
+      if (audioUrl) {
+        audio.src = audioUrl;
       } else {
+        // Fallback to direct URL if not preloaded yet
         audio.src = `music/${track.file}`;
       }
+      
+      // Ensure audio is ready before playing
+      audio.load();
     }
 
+    let isBuffering = false;
+
     function togglePlay() {
+      if (isBuffering) return; // Prevent clicks while buffering
+      
       isPlaying = !isPlaying;
       
       if (isPlaying) {
-        playIcon.style.display = 'none';
-        pauseIcon.style.display = 'block';
-        playBtn.classList.add('playing');
-        initAudioContext();
-        audio.play().catch(() => {});
-        showTrackInfo();
-        if (animationId) cancelAnimationFrame(animationId);
-        visualize();
+        startPlayback();
       } else {
-        playIcon.style.display = 'block';
-        pauseIcon.style.display = 'none';
-        playBtn.classList.remove('playing');
-        audio.pause();
-        if (animationId) cancelAnimationFrame(animationId);
-        // Reset visual effects
-        playBtn.style.transform = '';
-        playBtn.style.boxShadow = '';
-        playBtn.style.borderColor = '';
-        playBtn.style.opacity = '';
-        progressRing.style.stroke = '';
-        progressRing.style.filter = '';
-        smoothedIntensity = 0;
-        smoothedScale = 1;
+        pausePlayback();
       }
       
       resetHideTimer();
+    }
+
+    async function startPlayback() {
+      playBtn.classList.add('loading');
+      
+      try {
+        // Wait for audio to be ready
+        if (audio.readyState < 3) {
+          isBuffering = true;
+          await waitForAudioReady();
+        }
+        
+        initAudioContext();
+        await audio.play();
+        
+        playIcon.style.display = 'none';
+        pauseIcon.style.display = 'block';
+        playBtn.classList.remove('loading');
+        playBtn.classList.add('playing');
+        showTrackInfo();
+        
+        if (animationId) cancelAnimationFrame(animationId);
+        visualize();
+      } catch (error) {
+        console.error('Playback failed:', error);
+        isPlaying = false;
+        playBtn.classList.remove('loading');
+        playIcon.style.display = 'block';
+        pauseIcon.style.display = 'none';
+      } finally {
+        isBuffering = false;
+      }
+    }
+
+    function pausePlayback() {
+      playIcon.style.display = 'block';
+      pauseIcon.style.display = 'none';
+      playBtn.classList.remove('playing');
+      audio.pause();
+      if (animationId) cancelAnimationFrame(animationId);
+      // Reset visual effects
+      playBtn.style.transform = '';
+      playBtn.style.boxShadow = '';
+      playBtn.style.borderColor = '';
+      playBtn.style.opacity = '';
+      progressRing.style.stroke = '';
+      progressRing.style.filter = '';
+      smoothedIntensity = 0;
+      smoothedScale = 1;
+    }
+
+    function waitForAudioReady() {
+      return new Promise((resolve, reject) => {
+        const checkReady = () => {
+          if (audio.readyState >= 3) {
+            resolve();
+          } else if (audio.error) {
+            reject(audio.error);
+          } else {
+            setTimeout(checkReady, 100);
+          }
+        };
+        checkReady();
+        
+        // Timeout after 10 seconds
+        setTimeout(() => reject(new Error('Audio load timeout')), 10000);
+      });
     }
 
     function initAudioContext() {
@@ -562,18 +669,7 @@
 
     function play() {
       isPlaying = true;
-      playIcon.style.display = 'none';
-      pauseIcon.style.display = 'block';
-      playBtn.classList.add('playing');
-      
-      initAudioContext();
-      audio.play().catch(() => {});
-      showTrackInfo();
-      resetHideTimer();
-      
-      // Start visualization
-      if (animationId) cancelAnimationFrame(animationId);
-      visualize();
+      startPlayback();
     }
 
     function nextScene() {
@@ -736,10 +832,53 @@
 
     // Audio events
     audio.addEventListener('timeupdate', updateProgress);
+    
+    audio.addEventListener('waiting', () => {
+      // Audio is buffering
+      isBuffering = true;
+      playBtn.classList.add('loading');
+    });
+    
+    audio.addEventListener('canplay', () => {
+      // Audio can start playing
+      if (isBuffering) {
+        isBuffering = false;
+        playBtn.classList.remove('loading');
+      }
+    });
+    
+    audio.addEventListener('canplaythrough', () => {
+      // Audio can play without further buffering
+      isBuffering = false;
+      playBtn.classList.remove('loading');
+    });
+    
     audio.addEventListener('ended', () => {
       currentTrackIndex = (currentTrackIndex + 1) % scenes[currentSceneIndex].tracks.length;
       loadTrack();
-      if (isPlaying) audio.play();
+      if (isPlaying) {
+        isBuffering = false;
+        startPlayback();
+      }
+    });
+    
+    audio.addEventListener('error', (e) => {
+      console.error('Audio error:', e);
+      isBuffering = false;
+      playBtn.classList.remove('loading');
+      // Try to recover by reloading current track
+      if (isPlaying) {
+        setTimeout(() => {
+          loadTrack();
+          startPlayback();
+        }, 1000);
+      }
+    });
+    
+    audio.addEventListener('stalled', () => {
+      console.warn('Audio stalled - network issue');
+      isBuffering = true;
+      playBtn.classList.add('loading');
     });
 
     // Keyboard shortcuts
