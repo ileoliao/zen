@@ -316,6 +316,14 @@
     let smoothedScale = 1;
     let animationId = null;
 
+    // Dual audio source: Howler for playback, hidden audio + Web Audio API for analysis
+    let analysisAudio = null;
+    let audioContext = null;
+    let analyser = null;
+    let dataArray = null;
+    let sourceNode = null;
+    let isAudioContextInitialized = false;
+
     const sceneIndicator = document.getElementById('sceneIndicator');
     const sceneName = document.getElementById('sceneName');
     const playBtn = document.getElementById('playBtn');
@@ -396,6 +404,16 @@
         currentHowl.unload();
       }
       
+      // Stop and cleanup analysis audio
+      if (analysisAudio) {
+        analysisAudio.pause();
+        analysisAudio.src = '';
+        if (sourceNode) {
+          sourceNode.disconnect();
+          sourceNode = null;
+        }
+      }
+      
       // Use preloaded Howl or create new one
       const file = track.file;
       if (preloadedSounds[file]) {
@@ -408,6 +426,12 @@
         });
       }
       
+      // Create hidden audio element for analysis
+      analysisAudio = new Audio(`music/${file}`);
+      analysisAudio.crossOrigin = 'anonymous';
+      analysisAudio.preload = 'auto';
+      analysisAudio.volume = 0; // Muted - we only use it for analysis
+      
       // Set up event listeners
       currentHowl.on('end', onTrackEnd);
       currentHowl.on('load', () => {
@@ -417,6 +441,30 @@
         console.error('Load error:', err);
         playBtn.classList.remove('loading');
       });
+    }
+
+    function initAudioContext() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 512;
+        analyser.smoothingTimeConstant = 0.8;
+        analyser.minDecibels = -100;
+        analyser.maxDecibels = -30;
+        dataArray = new Uint8Array(analyser.frequencyBinCount);
+      }
+      
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      
+      // Connect analysis audio to analyser if not already connected
+      if (analysisAudio && !sourceNode) {
+        sourceNode = audioContext.createMediaElementSource(analysisAudio);
+        sourceNode.connect(analyser);
+        // Don't connect to destination - we don't want to hear this audio
+        isAudioContextInitialized = true;
+      }
     }
 
     function onTrackEnd() {
@@ -448,14 +496,27 @@
         loadTrack();
       }
       
+      // Initialize audio context for analysis
+      initAudioContext();
+      
       // Check if already loaded
       if (currentHowl.state() === 'loaded') {
         currentHowl.play();
+        // Start analysis audio in sync
+        if (analysisAudio) {
+          analysisAudio.currentTime = 0;
+          analysisAudio.play().catch(e => console.log('Analysis audio play failed:', e));
+        }
         onPlaybackStart();
       } else {
         // Wait for load
         currentHowl.once('load', () => {
           currentHowl.play();
+          // Start analysis audio in sync
+          if (analysisAudio) {
+            analysisAudio.currentTime = 0;
+            analysisAudio.play().catch(e => console.log('Analysis audio play failed:', e));
+          }
           onPlaybackStart();
         });
       }
@@ -475,6 +536,10 @@
     function pausePlayback() {
       if (currentHowl) {
         currentHowl.pause();
+      }
+      // Pause analysis audio too
+      if (analysisAudio) {
+        analysisAudio.pause();
       }
       playIcon.style.display = 'block';
       pauseIcon.style.display = 'none';
@@ -542,17 +607,55 @@
       progressRing.style.strokeDashoffset = offset;
     }
 
-    // Simplified visualization without audio context
+    // Audio-driven visualization
     function visualize() {
       if (!isPlaying) return;
       
       // Update progress ring
       updateProgress();
       
-      // Gentle breathing animation (not tied to audio)
-      const time = Date.now() / 1000;
-      const breatheScale = 1 + Math.sin(time * 0.5) * 0.03;
-      const breatheOpacity = 0.85 + Math.sin(time * 0.5) * 0.1;
+      let audioIntensity = 0;
+      
+      // Get audio frequency data if available
+      if (analyser && dataArray) {
+        analyser.getByteFrequencyData(dataArray);
+        
+        // Calculate average intensity (0-255)
+        let sum = 0;
+        let bassSum = 0;
+        let midSum = 0;
+        
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+          // Bass frequencies (first 10%)
+          if (i < dataArray.length * 0.1) {
+            bassSum += dataArray[i];
+          }
+          // Mid frequencies (10-60%)
+          else if (i < dataArray.length * 0.6) {
+            midSum += dataArray[i];
+          }
+        }
+        
+        const avgIntensity = sum / dataArray.length / 255;
+        const bassIntensity = bassSum / (dataArray.length * 0.1) / 255;
+        const midIntensity = midSum / (dataArray.length * 0.5) / 255;
+        
+        // Weight bass and mid more for piano music
+        audioIntensity = avgIntensity * 0.3 + bassIntensity * 0.4 + midIntensity * 0.3;
+        
+        // Apply curve for more sensitivity at low levels
+        audioIntensity = Math.pow(audioIntensity, 0.7);
+      }
+      
+      // Smooth the intensity
+      smoothedIntensity = smoothedIntensity + (audioIntensity - smoothedIntensity) * 0.15;
+      
+      // Calculate scale based on audio intensity
+      const baseScale = 1;
+      const maxScale = 1.15;
+      const targetScale = baseScale + smoothedIntensity * (maxScale - baseScale);
+      smoothedScale = smoothedScale + (targetScale - smoothedScale) * 0.1;
       
       // Get scene color
       const baseColor = {
@@ -562,12 +665,18 @@
         unwind: [212, 184, 200]
       }[scenes[currentSceneIndex].id] || [168, 200, 236];
       
-      const glowColor = `rgba(${baseColor.join(',')}, ${0.4 + Math.sin(time) * 0.2})`;
+      // Dynamic opacity based on intensity
+      const opacity = 0.7 + smoothedIntensity * 0.25;
       
-      playBtn.style.transform = `scale(${breatheScale})`;
-      playBtn.style.boxShadow = `0 0 ${60 + Math.sin(time) * 20}px -10px ${glowColor}`;
-      playBtn.style.borderColor = glowColor;
-      playBtn.style.opacity = breatheOpacity;
+      // Dynamic glow based on intensity
+      const glowSize = 40 + smoothedIntensity * 80;
+      const glowAlpha = 0.3 + smoothedIntensity * 0.5;
+      const glowColor = `rgba(${baseColor.join(',')}, ${glowAlpha})`;
+      
+      playBtn.style.transform = `scale(${smoothedScale})`;
+      playBtn.style.boxShadow = `0 0 ${glowSize}px -10px ${glowColor}`;
+      playBtn.style.borderColor = `rgba(${baseColor.join(',')}, ${0.3 + smoothedIntensity * 0.5})`;
+      playBtn.style.opacity = opacity;
       progressRing.style.stroke = `rgb(${baseColor.join(',')})`;
       
       animationId = requestAnimationFrame(visualize);
