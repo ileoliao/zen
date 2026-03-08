@@ -471,6 +471,9 @@
       </div>
       <div class="volume-label">Volume</div>
     </div>
+
+    <!-- iOS Native Audio Fallback Player -->
+    <audio id="iosAudioPlayer" playsinline preload="auto" style="display: none;"></audio>
   </div>
 
   <script>
@@ -581,6 +584,19 @@
       // iPad on iOS 13 detection
       || (navigator.userAgent.includes("Mac") && "ontouchend" in document);
 
+    const iosAudioPlayer = document.getElementById('iosAudioPlayer');
+
+    // Wire up events for the iOS native fallback
+    if (isIOS) {
+      iosAudioPlayer.addEventListener('ended', onTrackEnd);
+      iosAudioPlayer.addEventListener('error', (e) => {
+        console.error('iOS Audio Player Error:', iosAudioPlayer.error);
+        // Recovery logic on error
+        pausePlayback();
+      });
+      iosAudioPlayer.volume = 0.8;
+    }
+
     // Preload all audio using Howler
     const preloadedSounds = {};
     let musicPreloaded = false;
@@ -612,10 +628,15 @@
       });
 
       // Start preloading in priority order
+      // Preloading via Howler is disabled for iOS because we use the native <audio> 
+      // tag which handles its own streaming, and we don't want Howler's hidden tags
+      // stealing the hardware audio session token from our single active element.
+      if (isIOS) return;
+
       allFiles.forEach(file => {
         preloadedSounds[file] = new Howl({
           src: [`music/${file}`],
-          html5: isIOS, // Force HTML5 Audio on iOS for reliability
+          html5: false, // Desktop uses Web Audio API
           preload: true,
           volume: 0.8,
 
@@ -669,7 +690,9 @@
       trackArtist.textContent = track.artist;
 
       // Stop current playback without unloading (keep preloaded sounds)
-      if (currentHowl) {
+      if (isIOS) {
+        iosAudioPlayer.pause();
+      } else if (currentHowl) {
         currentHowl.stop();
       }
 
@@ -678,26 +701,33 @@
       visualIntensity = 0;
       bassHistory = [];
 
-      // Use preloaded Howl if available
-      // Don't create new Howl here to avoid creating AudioContext before user gesture (iOS)
       const file = track.file;
-      if (preloadedSounds[file]) {
-        currentHowl = preloadedSounds[file];
-      } else {
-        // Will be created in ensureCurrentHowl() when playback starts
-        currentHowl = null;
-      }
 
-      // Register onend callback so tracks auto-advance
-      if (currentHowl) {
-        currentHowl.off('end');
-        currentHowl.on('end', onTrackEnd);
+      if (isIOS) {
+        // Point the unified native audio element to the new source
+        iosAudioPlayer.src = `music/${file}`;
+        iosAudioPlayer.load();
+      } else {
+        // Use preloaded Howl if available
+        // Don't create new Howl here to avoid creating AudioContext before user gesture
+        if (preloadedSounds[file]) {
+          currentHowl = preloadedSounds[file];
+        } else {
+          // Will be created in ensureCurrentHowl() when playback starts
+          currentHowl = null;
+        }
+
+        // Register onend callback so tracks auto-advance
+        if (currentHowl) {
+          currentHowl.off('end');
+          currentHowl.on('end', onTrackEnd);
+        }
       }
     }
 
     // Create Howl on demand (only called during user interaction)
     function ensureCurrentHowl() {
-      if (currentHowl) return;
+      if (isIOS || currentHowl) return;
       const scene = scenes[currentSceneIndex];
       const track = scene.tracks[currentTrackIndex];
       const file = track.file;
@@ -707,7 +737,7 @@
       } else {
         currentHowl = new Howl({
           src: [`music/${file}`],
-          html5: isIOS, // Force HTML5 Audio on iOS
+          html5: false,
           volume: 0.8
         });
       }
@@ -772,58 +802,70 @@
     function startPlayback() {
       playBtn.classList.add('loading');
 
-      // Force unlock audio on iOS - this is critical
-      // Create and resume AudioContext on user interaction
-      if (!Howler.ctx) {
-        Howler.volume(0.8);
-      }
-
-      // Resume AudioContext if suspended (required on iOS)
-      // IMPORTANT: Call resume() synchronously within user gesture call stack
-      // Do NOT await - iOS requires play() to be in the same sync call stack
-      if (Howler.ctx && Howler.ctx.state === 'suspended') {
-        Howler.ctx.resume().catch(e => console.warn('Failed to resume AudioContext:', e));
+      // 1. Desktop: Web Audio Context Resurrection
+      if (!isIOS) {
+        if (!Howler.ctx) {
+          Howler.volume(0.8);
+        }
+        if (Howler.ctx && Howler.ctx.state === 'suspended') {
+          Howler.ctx.resume().catch(e => console.warn('Failed to resume AudioContext:', e));
+        }
       }
 
       // Ensure music is preloaded (first interaction)
       preloadAllMusic();
 
-      if (!currentHowl) {
+      if (!isIOS && !currentHowl) {
         ensureCurrentHowl();
       }
 
-      // Initialize audio context for analysis
+      // Initialize audio context for analysis (bypasses on iOS)
       initAudioContext();
 
       // Check if already loaded
-      if (currentHowl.state() === 'loaded') {
-        playAudioAndStart();
-      } else if (currentHowl.state() === 'loading') {
-        // Wait for load
-        currentHowl.once('load', () => {
+      if (isIOS) {
+        // Native audio is ready enough when network state is not EMPTY
+        if (iosAudioPlayer.readyState >= 2) {
           playAudioAndStart();
-        });
+        } else {
+          // If we just set src, play() will automatically wait for enough data
+          playAudioAndStart();
+        }
       } else {
-        // State is 'unloaded', need to load first
-        currentHowl.load();
-        currentHowl.once('load', () => {
+        if (currentHowl.state() === 'loaded') {
           playAudioAndStart();
-        });
+        } else if (currentHowl.state() === 'loading') {
+          // Wait for load
+          currentHowl.once('load', () => {
+            playAudioAndStart();
+          });
+        } else {
+          // State is 'unloaded', need to load first
+          currentHowl.load();
+          currentHowl.once('load', () => {
+            playAudioAndStart();
+          });
+        }
       }
     }
 
     function playAudioAndStart() {
-      // Ensure Web Audio context is resumed on iOS
-      // Call synchronously - don't await
-      if (Howler.ctx && Howler.ctx.state === 'suspended') {
-        Howler.ctx.resume().catch(e => console.warn('Failed to resume AudioContext:', e));
+      if (isIOS) {
+        // Bypass Howler completely, directly manipulate native element
+        iosAudioPlayer.play().then(() => {
+          onPlaybackStart();
+        }).catch(err => {
+          console.warn('iOS Native Play Failed:', err);
+          playBtn.classList.remove('loading');
+        });
+      } else {
+        // Desktop Web Audio Logic
+        if (Howler.ctx && Howler.ctx.state === 'suspended') {
+          Howler.ctx.resume().catch(e => console.warn('Failed to resume AudioContext:', e));
+        }
+        currentHowl.play();
+        onPlaybackStart();
       }
-
-      // Analyser is already connected via masterGain in initAudioContext()
-      // No need to connect individual sound nodes
-
-      currentHowl.play();
-      onPlaybackStart();
     }
 
     function onPlaybackStart() {
@@ -837,7 +879,9 @@
 
     function pausePlayback() {
       isPlaying = false;
-      if (currentHowl) {
+      if (isIOS) {
+        iosAudioPlayer.pause();
+      } else if (currentHowl) {
         currentHowl.pause();
       }
       playIcon.style.display = 'block';
@@ -946,7 +990,9 @@
       let audioIntensity = 0;
 
       // Only do audio visualization when music is actually playing
-      if (currentHowl && currentHowl.playing() && !isIOS) {
+      const isActuallyPlaying = isIOS ? (!iosAudioPlayer.paused) : (currentHowl && currentHowl.playing());
+
+      if (isActuallyPlaying && !isIOS) {
         // Get audio frequency data if available
         if (analyser && dataArray) {
           analyser.getByteFrequencyData(dataArray);
@@ -993,7 +1039,7 @@
           // Use visualIntensity directly (no additional smoothing needed due to decay)
           audioIntensity = visualIntensity;
         }
-      } else if (currentHowl && currentHowl.playing() && isIOS) {
+      } else if (isActuallyPlaying && isIOS) {
         // Fallback breathing animation for iOS (HTML5 Audio mode lacks AnalyserNode)
         // Use a time-based sine wave to create a smooth, noticeable rhythmic pulse
         const time = Date.now() / 1000;
@@ -1245,9 +1291,13 @@
       const rect = document.getElementById('volumeSlider').getBoundingClientRect();
       const percent = 1 - ((clientY - rect.top) / rect.height);
       const volume = Math.max(0, Math.min(1, percent));
-      if (currentHowl) {
+
+      if (isIOS) {
+        iosAudioPlayer.volume = volume;
+      } else if (currentHowl) {
         currentHowl.volume(volume);
       }
+
       volumeFill.style.height = (volume * 100) + '%';
     }
 
