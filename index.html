@@ -539,6 +539,10 @@
           sourceNode.disconnect();
           sourceNode = null;
         }
+        // Remove from DOM
+        if (analysisAudio.parentNode) {
+          analysisAudio.parentNode.removeChild(analysisAudio);
+        }
       }
       
       // Use preloaded Howl or create new one
@@ -554,10 +558,13 @@
       }
       
       // Create hidden audio element for analysis
-      analysisAudio = new Audio(`music/${file}`);
+      analysisAudio = document.createElement('audio');
       analysisAudio.crossOrigin = 'anonymous';
+      analysisAudio.src = `music/${file}`;
       analysisAudio.preload = 'auto';
       analysisAudio.volume = 0; // Muted - we only use it for analysis
+      analysisAudio.style.display = 'none';
+      document.body.appendChild(analysisAudio);
       
       // Set up event listeners
       currentHowl.on('end', onTrackEnd);
@@ -653,12 +660,36 @@
       }
     }
     
-    function playAudioAndStart() {
+    async function playAudioAndStart() {
       currentHowl.play();
       // Start analysis audio in sync
       if (analysisAudio) {
-        analysisAudio.currentTime = 0;
-        analysisAudio.play().catch(e => console.log('Analysis audio play failed:', e));
+        try {
+          // Wait for analysis audio to be ready
+          if (analysisAudio.readyState < 2) {
+            await new Promise((resolve, reject) => {
+              const onCanPlay = () => {
+                analysisAudio.removeEventListener('canplay', onCanPlay);
+                analysisAudio.removeEventListener('error', onError);
+                resolve();
+              };
+              const onError = (e) => {
+                analysisAudio.removeEventListener('canplay', onCanPlay);
+                analysisAudio.removeEventListener('error', onError);
+                reject(e);
+              };
+              analysisAudio.addEventListener('canplay', onCanPlay);
+              analysisAudio.addEventListener('error', onError);
+              // Timeout after 5 seconds
+              setTimeout(() => reject(new Error('Timeout')), 5000);
+            });
+          }
+          analysisAudio.currentTime = 0;
+          await analysisAudio.play();
+          console.log('Analysis audio playing successfully');
+        } catch (e) {
+          console.log('Analysis audio play failed:', e.message || e);
+        }
       }
       onPlaybackStart();
     }
