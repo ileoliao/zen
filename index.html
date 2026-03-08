@@ -567,6 +567,20 @@
     let touchStartTime = 0;
     let longPressTimer;
 
+    // Mobile detection for iOS
+    // iOS Safari has extremely strict Web Audio API policies that often cause silent playback
+    // To ensure reliable audio on iOS, we must use HTML5 Audio instead of Web Audio API
+    const isIOS = [
+      'iPad Simulator',
+      'iPhone Simulator',
+      'iPod Simulator',
+      'iPad',
+      'iPhone',
+      'iPod'
+    ].includes(navigator.platform)
+      // iPad on iOS 13 detection
+      || (navigator.userAgent.includes("Mac") && "ontouchend" in document);
+
     // Preload all audio using Howler
     const preloadedSounds = {};
     let musicPreloaded = false;
@@ -587,7 +601,7 @@
       allFiles.forEach(file => {
         preloadedSounds[file] = new Howl({
           src: [`music/${file}`],
-          html5: false, // Use Web Audio API for visualization
+          html5: isIOS, // Force HTML5 Audio on iOS for reliability
           preload: true,
           volume: 0.8,
 
@@ -679,7 +693,7 @@
       } else {
         currentHowl = new Howl({
           src: [`music/${file}`],
-          html5: false,
+          html5: isIOS, // Force HTML5 Audio on iOS
           volume: 0.8
         });
       }
@@ -691,6 +705,11 @@
     let analyserConnected = false;
 
     function initAudioContext() {
+      // If we are using HTML5 Audio (iOS), we cannot use AnalyserNode reliably
+      // without CORS issues or MediaElementSource complications on Safari.
+      // So we skip it entirely.
+      if (isIOS) return;
+
       // Force create Howler's AudioContext if it doesn't exist yet
       if (!Howler.ctx) {
         Howler.volume(0.8);
@@ -913,7 +932,7 @@
       let audioIntensity = 0;
 
       // Only do audio visualization when music is actually playing
-      if (currentHowl && currentHowl.playing()) {
+      if (currentHowl && currentHowl.playing() && !isIOS) {
         // Get audio frequency data if available
         if (analyser && dataArray) {
           analyser.getByteFrequencyData(dataArray);
