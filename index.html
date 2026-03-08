@@ -799,8 +799,14 @@
     }
 
     // Audio-driven visualization
+    let frameCount = 0;
     function visualize() {
       if (!isPlaying) return;
+      
+      frameCount++;
+      if (frameCount % 60 === 0) {
+        console.log('Visualize running, analyser:', !!analyser, 'dataArray:', !!dataArray);
+      }
       
       // Update progress ring
       updateProgress();
@@ -835,6 +841,11 @@
         // Weight bass and mid more for piano music
         audioIntensity = avgIntensity * 0.3 + bassIntensity * 0.4 + midIntensity * 0.3;
         
+        // Debug logging
+        if (frameCount % 60 === 0) {
+          console.log('Raw audioIntensity:', audioIntensity.toFixed(3), 'avg:', avgIntensity.toFixed(3));
+        }
+        
         // Amplify low values for piano sensitivity - use steeper curve
         // When audioIntensity is low (piano), boost it significantly
         if (audioIntensity < 0.08) {
@@ -848,6 +859,10 @@
         
         // Clamp to valid range
         audioIntensity = Math.min(1, audioIntensity);
+        
+        if (frameCount % 60 === 0) {
+          console.log('Final audioIntensity:', audioIntensity.toFixed(3));
+        }
       } else {
         // Fallback: time-based breathing animation
         const time = Date.now() / 1000;
@@ -884,6 +899,10 @@
       playBtn.style.borderColor = `rgba(${baseColor.join(',')}, ${0.5 + smoothedIntensity * 0.3})`;
       playBtn.style.opacity = opacity;
       progressRing.style.stroke = `rgb(${baseColor.join(',')})`;
+      
+      if (frameCount % 60 === 0) {
+        console.log('Applied styles - scale:', smoothedScale.toFixed(3), 'glowSize:', glowSize.toFixed(0), 'opacity:', opacity.toFixed(3));
+      }
       
       animationId = requestAnimationFrame(visualize);
     }
