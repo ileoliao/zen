@@ -244,10 +244,19 @@
       transform: scale(0.96);
     }
 
+    /* Minimal state when playing */
     .play-button.playing {
-      transition: transform 0.1s ease-out, box-shadow 0.1s ease-out, border-color 0.3s ease;
-      box-shadow: 0 0 30px -5px rgba(255, 255, 255, 0.1);
-      outline: none;
+      transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      background: transparent;
+      border-color: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      box-shadow: none;
+    }
+
+    .play-button.playing:hover {
+      background: transparent;
+      transform: scale(1);
     }
 
     .play-button.loading {
@@ -276,7 +285,20 @@
       height: 32px;
       fill: #fff;
       opacity: 0.9;
-      transition: all 0.3s ease;
+      transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .play-button.playing .play-icon {
+      opacity: 0.12;
+      /* Extremely faint when playing */
+      transform: scale(0.7);
+      /* Smaller and less intrusive */
+    }
+
+    .play-button.playing:hover .play-icon {
+      opacity: 0.6;
+      /* Lights up on hover */
+      transform: scale(0.9);
     }
 
     .track-info {
