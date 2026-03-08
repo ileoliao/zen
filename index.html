@@ -979,8 +979,22 @@
           // Use visualIntensity directly (no additional smoothing needed due to decay)
           audioIntensity = visualIntensity;
         }
+      } else if (currentHowl && currentHowl.playing() && isIOS) {
+        // Fallback breathing animation for iOS (HTML5 Audio mode lacks AnalyserNode)
+        // Use a time-based sine wave to create a smooth, noticeable rhythmic pulse
+        const time = Date.now() / 1000;
+
+        // Base intensity + sine wave oscillation
+        // Oscillation range: -1 to 1. We scale it and add to a base value.
+        // Base 0.3, Swing 0.15 = pulsates between 0.15 and 0.45
+        const breatheSpeed = 2.0; // Seconds per full breath cycle
+        const pulse = Math.sin(time * Math.PI * 2 / breatheSpeed);
+
+        visualIntensity = 0.3 + (pulse * 0.15);
+        previousEnergy = 0;
+        audioIntensity = visualIntensity;
       } else {
-        // Reset to gentle breathing when not playing
+        // Reset to gentle, almost static breathing when paused/stopped
         visualIntensity = 0.12;
         previousEnergy = 0;
         audioIntensity = 0.12;
