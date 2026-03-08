@@ -244,14 +244,15 @@
       transform: scale(0.96);
     }
 
-    /* Minimal state when playing */
+    /* Keep the frosted glass disc so the glowing shadow has a physical body to attach to,
+       reducing the opacity slightly so it stays minimal */
     .play-button.playing {
-      transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-      background: transparent;
-      border-color: transparent;
-      backdrop-filter: none;
-      -webkit-backdrop-filter: none;
-      box-shadow: none;
+      transition: transform 0.1s ease-out, box-shadow 0.1s ease-out, border-color 0.3s ease;
+      background: rgba(255, 255, 255, 0.015);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      outline: none;
     }
 
     .play-button.playing:hover {
