@@ -779,24 +779,27 @@
         
         // Amplify low values for piano sensitivity - use steeper curve
         // When audioIntensity is low (piano), boost it significantly
-        if (audioIntensity < 0.1) {
-          audioIntensity = audioIntensity * 5; // Boost very low values
+        if (audioIntensity < 0.08) {
+          audioIntensity = audioIntensity * 8; // Boost very low values more
         } else {
-          audioIntensity = Math.pow(audioIntensity, 0.5); // Less aggressive curve for higher values
+          audioIntensity = Math.pow(audioIntensity, 0.4); // Less aggressive curve for higher values
         }
         
+        // Ensure minimum intensity so even quiet piano shows effect
+        audioIntensity = Math.max(0.15, audioIntensity);
+        
         // Clamp to valid range
-        audioIntensity = Math.min(1, Math.max(0, audioIntensity));
+        audioIntensity = Math.min(1, audioIntensity);
       }
       
-      // Smooth the intensity - faster response
-      smoothedIntensity = smoothedIntensity + (audioIntensity - smoothedIntensity) * 0.2;
+      // Smooth the intensity - faster response for piano
+      smoothedIntensity = smoothedIntensity + (audioIntensity - smoothedIntensity) * 0.25;
       
       // Calculate scale based on audio intensity
       const baseScale = 1;
-      const maxScale = 1.12;
+      const maxScale = 1.15;
       const targetScale = baseScale + smoothedIntensity * (maxScale - baseScale);
-      smoothedScale = smoothedScale + (targetScale - smoothedScale) * 0.15;
+      smoothedScale = smoothedScale + (targetScale - smoothedScale) * 0.2;
       
       // Get scene color
       const baseColor = {
@@ -807,16 +810,16 @@
       }[scenes[currentSceneIndex].id] || [168, 200, 236];
       
       // Dynamic opacity based on intensity
-      const opacity = 0.75 + smoothedIntensity * 0.2;
+      const opacity = 0.8 + smoothedIntensity * 0.15;
       
-      // Dynamic glow based on intensity - larger range for piano
-      const glowSize = 30 + smoothedIntensity * 100; // 30 to 130px
-      const glowAlpha = 0.4 + smoothedIntensity * 0.5; // More visible base glow
+      // Dynamic glow based on intensity - much larger range for piano visibility
+      const glowSize = 60 + smoothedIntensity * 140; // 60 to 200px
+      const glowAlpha = 0.5 + smoothedIntensity * 0.4; // More visible base glow
       const glowColor = `rgba(${baseColor.join(',')}, ${glowAlpha})`;
       
       playBtn.style.transform = `scale(${smoothedScale})`;
-      playBtn.style.boxShadow = `0 0 ${glowSize}px ${smoothedIntensity * 15}px ${glowColor}`;
-      playBtn.style.borderColor = `rgba(${baseColor.join(',')}, ${0.4 + smoothedIntensity * 0.4})`;
+      playBtn.style.boxShadow = `0 0 ${glowSize}px ${smoothedIntensity * 25}px ${glowColor}`;
+      playBtn.style.borderColor = `rgba(${baseColor.join(',')}, ${0.5 + smoothedIntensity * 0.3})`;
       playBtn.style.opacity = opacity;
       progressRing.style.stroke = `rgb(${baseColor.join(',')})`;
       
