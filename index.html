@@ -228,16 +228,10 @@
       align-items: center;
       justify-content: center;
       transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      -webkit-appearance: none;
       appearance: none;
       color: #fff;
       box-shadow: none;
       outline: none;
-    }
-
-    .play-button:hover {
-      background: rgba(255, 255, 255, 0.06);
-      transform: scale(1.02);
     }
 
     .play-button:active {
@@ -255,9 +249,16 @@
       outline: none;
     }
 
-    .play-button.playing:hover {
-      background: transparent;
-      transform: scale(1);
+    @media (hover: hover) {
+      .play-button:hover {
+        background: rgba(255, 255, 255, 0.06);
+        transform: scale(1.02);
+      }
+
+      .play-button.playing:hover {
+        background: transparent;
+        transform: scale(1);
+      }
     }
 
     .play-button.loading {
