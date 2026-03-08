@@ -749,6 +749,7 @@
     }
 
     // Audio-driven visualization
+    let debugFrame = 0;
     function visualize() {
       if (!isPlaying) return;
       
@@ -785,6 +786,12 @@
         // Weight bass and mid more for piano music
         audioIntensity = avgIntensity * 0.3 + bassIntensity * 0.4 + midIntensity * 0.3;
         
+        // Debug: log every 60 frames
+        debugFrame++;
+        if (debugFrame % 60 === 0) {
+          console.log('Audio intensity:', audioIntensity.toFixed(3), 'Avg:', avgIntensity.toFixed(3));
+        }
+        
         // Amplify low values for piano sensitivity - use steeper curve
         // When audioIntensity is low (piano), boost it significantly
         if (audioIntensity < 0.08) {
@@ -798,6 +805,10 @@
         
         // Clamp to valid range
         audioIntensity = Math.min(1, audioIntensity);
+      } else {
+        // Fallback: time-based breathing animation
+        const time = Date.now() / 1000;
+        audioIntensity = 0.3 + Math.sin(time * 2) * 0.2;
       }
       
       // Smooth the intensity - faster response for piano
