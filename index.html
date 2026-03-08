@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -13,7 +14,8 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    html, body {
+    html,
+    body {
       height: 100%;
       overflow: hidden;
       background: #0a0a0f;
@@ -35,7 +37,7 @@
 
     /* Deep gradient base with richer layers */
     .bg-gradient {
-      background: 
+      background:
         radial-gradient(ellipse at 20% 20%, rgba(232, 213, 183, 0.1) 0%, transparent 70%),
         radial-gradient(ellipse at 80% 80%, rgba(168, 200, 236, 0.08) 0%, transparent 70%),
         radial-gradient(ellipse at 50% 50%, rgba(15, 15, 20, 1) 0%, rgba(8, 8, 12, 1) 100%);
@@ -102,22 +104,26 @@
 
     /* Slow flowing aurora effect */
     .bg-aurora {
-      background: 
-        radial-gradient(circle at 30% 50%, rgba(255,255,255,0.02) 0%, transparent 50%),
-        radial-gradient(circle at 70% 50%, rgba(255,255,255,0.015) 0%, transparent 50%);
+      background:
+        radial-gradient(circle at 30% 50%, rgba(255, 255, 255, 0.02) 0%, transparent 50%),
+        radial-gradient(circle at 70% 50%, rgba(255, 255, 255, 0.015) 0%, transparent 50%);
       background-size: 150% 150%;
       animation: aurora 40s ease-in-out infinite;
     }
 
     @keyframes aurora {
-      0%, 100% {
+
+      0%,
+      100% {
         transform: translateX(0) scale(1);
         opacity: 1;
       }
+
       33% {
         transform: translateX(0.5%) scale(1.005);
         opacity: 0.8;
       }
+
       66% {
         transform: translateX(-0.5%) scale(0.995);
         opacity: 0.9;
@@ -126,7 +132,7 @@
 
     /* Vignette overlay for depth */
     .bg-vignette {
-      background: radial-gradient(circle at 50% 50%, transparent 0%, rgba(0,0,0,0.4) 100%);
+      background: radial-gradient(circle at 50% 50%, transparent 0%, rgba(0, 0, 0, 0.4) 100%);
     }
 
     .app {
@@ -155,7 +161,7 @@
       font-size: 11px;
       letter-spacing: 0.4em;
       text-transform: uppercase;
-      color: rgba(255,255,255,0.4);
+      color: rgba(255, 255, 255, 0.4);
       margin-bottom: 8px;
     }
 
@@ -167,10 +173,21 @@
       transition: color 0.6s ease;
     }
 
-    .scene-name.begin { color: #f4c569; }
-    .scene-name.deep { color: #7eb8e8; }
-    .scene-name.flow { color: #e8b84a; }
-    .scene-name.unwind { color: #c9846e; }
+    .scene-name.begin {
+      color: #f4c569;
+    }
+
+    .scene-name.deep {
+      color: #7eb8e8;
+    }
+
+    .scene-name.flow {
+      color: #e8b84a;
+    }
+
+    .scene-name.unwind {
+      color: #c9846e;
+    }
 
     .player-container {
       position: relative;
@@ -186,7 +203,7 @@
 
     .progress-ring-bg {
       fill: none;
-      stroke: rgba(255,255,255,0.08);
+      stroke: rgba(255, 255, 255, 0.08);
       stroke-width: 1;
     }
 
@@ -203,8 +220,8 @@
       position: absolute;
       inset: 20px;
       border-radius: 50%;
-      border: 1px solid rgba(255,255,255,0.1);
-      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.03);
       backdrop-filter: blur(20px);
       cursor: pointer;
       display: flex;
@@ -219,7 +236,7 @@
     }
 
     .play-button:hover {
-      background: rgba(255,255,255,0.06);
+      background: rgba(255, 255, 255, 0.06);
       transform: scale(1.02);
     }
 
@@ -229,7 +246,7 @@
 
     .play-button.playing {
       transition: transform 0.1s ease-out, box-shadow 0.1s ease-out, border-color 0.3s ease;
-      box-shadow: 0 0 30px -5px rgba(255,255,255,0.1);
+      box-shadow: 0 0 30px -5px rgba(255, 255, 255, 0.1);
       outline: none;
     }
 
@@ -243,8 +260,15 @@
     }
 
     @keyframes pulse-loading {
-      0%, 100% { opacity: 0.3; }
-      50% { opacity: 0.7; }
+
+      0%,
+      100% {
+        opacity: 0.3;
+      }
+
+      50% {
+        opacity: 0.7;
+      }
     }
 
     .play-icon {
@@ -277,7 +301,7 @@
 
     .track-artist {
       font-size: 11px;
-      color: rgba(255,255,255,0.4);
+      color: rgba(255, 255, 255, 0.4);
       letter-spacing: 0.1em;
     }
 
@@ -287,7 +311,7 @@
       font-size: 10px;
       letter-spacing: 0.3em;
       text-transform: uppercase;
-      color: rgba(255,255,255,0.15);
+      color: rgba(255, 255, 255, 0.15);
       opacity: 0;
       transition: opacity 0.6s ease;
     }
@@ -299,7 +323,7 @@
     .volume-overlay {
       position: absolute;
       inset: 0;
-      background: rgba(0,0,0,0.8);
+      background: rgba(0, 0, 0, 0.8);
       backdrop-filter: blur(10px);
       display: flex;
       flex-direction: column;
@@ -318,7 +342,7 @@
     .volume-slider-vertical {
       width: 4px;
       height: 200px;
-      background: rgba(255,255,255,0.1);
+      background: rgba(255, 255, 255, 0.1);
       border-radius: 2px;
       position: relative;
       cursor: pointer;
@@ -338,7 +362,7 @@
       margin-top: 24px;
       font-size: 11px;
       letter-spacing: 0.2em;
-      color: rgba(255,255,255,0.5);
+      color: rgba(255, 255, 255, 0.5);
       text-transform: uppercase;
     }
 
@@ -351,7 +375,7 @@
       font-size: 16px;
       font-weight: 400;
       letter-spacing: 0.15em;
-      color: rgba(255,255,255,0.25);
+      color: rgba(255, 255, 255, 0.25);
       font-variant-numeric: tabular-nums;
       font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', monospace;
       opacity: 0.35;
@@ -373,10 +397,13 @@
     }
 
     @keyframes timer-breathe {
-      0%, 100% {
+
+      0%,
+      100% {
         opacity: 0.5;
         transform: translateX(-50%) translateY(0);
       }
+
       50% {
         opacity: 0.75;
         transform: translateX(-50%) translateY(-2px);
@@ -399,6 +426,7 @@
     }
   </style>
 </head>
+
 <body>
   <!-- Background layers -->
   <div class="bg-layer bg-gradient" id="bgGradient"></div>
@@ -414,19 +442,19 @@
 
     <div class="player-container">
       <svg class="progress-ring" viewBox="0 0 140 140">
-        <circle class="progress-ring-bg" cx="70" cy="70" r="70"/>
-        <circle class="progress-ring-fill" id="progressRing" cx="70" cy="70" r="70"/>
+        <circle class="progress-ring-bg" cx="70" cy="70" r="70" />
+        <circle class="progress-ring-fill" id="progressRing" cx="70" cy="70" r="70" />
       </svg>
-      
+
       <button class="play-button" id="playBtn">
         <svg class="play-icon" id="playIcon" viewBox="0 0 24 24">
-          <path d="M8 5v14l11-7z"/>
+          <path d="M8 5v14l11-7z" />
         </svg>
         <svg class="play-icon" id="pauseIcon" viewBox="0 0 24 24" style="display:none">
-          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>
+          <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
         </svg>
       </button>
-      
+
       <span class="timer-display" id="timerDisplay">25:00</span>
     </div>
 
@@ -498,12 +526,12 @@
     // Single audio source using Howler with Web Audio API
     let analyser = null;
     let dataArray = null;
-    
+
     // Beat detection variables
     let bassHistory = [];
     const bassHistorySize = 12; // Longer history for better trend detection
     // Thresholds are now defined in the visualize function
-    
+
     // Onset detection variables
     let previousEnergy = 0;
     let visualIntensity = 0; // Current visual intensity with decay
@@ -541,7 +569,7 @@
 
     // Preload all audio using Howler
     const preloadedSounds = {};
-    
+
     function preloadAllMusic() {
       const allFiles = [];
       scenes.forEach(scene => {
@@ -559,7 +587,7 @@
           preload: true,
           volume: 0.8,
 
-          onloaderror: function(id, err) {
+          onloaderror: function (id, err) {
             console.error(`Failed to load ${file}:`, err);
           }
         });
@@ -580,10 +608,10 @@
       sceneName.className = 'scene-name ' + scene.id;
       playBtn.className = 'play-button ' + scene.id + (isPlaying ? ' playing' : '');
       progressRing.className = 'progress-ring-fill ' + scene.id;
-      
+
       // Update timer color based on scene
       updatePomodoroDisplay();
-      
+
       // Reset visual effects when not playing
       if (!isPlaying) {
         resetVisualEffects();
@@ -604,21 +632,20 @@
     function loadTrack() {
       const scene = scenes[currentSceneIndex];
       const track = scene.tracks[currentTrackIndex];
-      
+
       trackName.textContent = track.title;
       trackArtist.textContent = track.artist;
-      
-      // Stop current playback
+
+      // Stop current playback without unloading (keep preloaded sounds)
       if (currentHowl) {
         currentHowl.stop();
-        currentHowl.unload();
       }
-      
+
       // Reset onset detection when switching tracks
       previousEnergy = 0;
       visualIntensity = 0;
       bassHistory = [];
-      
+
       // Use preloaded Howl or create new one
       const file = track.file;
       if (preloadedSounds[file]) {
@@ -630,26 +657,21 @@
           volume: 0.8
         });
       }
-      
-      // Set up event listeners
+
+      // Register onend callback so tracks auto-advance
+      currentHowl.off('end'); // Remove previous listeners to avoid duplicates
       currentHowl.on('end', onTrackEnd);
-      currentHowl.on('load', () => {
-        playBtn.classList.remove('loading');
-      });
-      currentHowl.on('loaderror', (id, err) => {
-        console.error('Load error:', err);
-        playBtn.classList.remove('loading');
-      });
     }
 
+    let analyserConnected = false;
+
     function initAudioContext() {
-      // Use Howler's built-in Web Audio context
+      // Force create Howler's AudioContext if it doesn't exist yet
       if (!Howler.ctx) {
-        console.error('Howler Web Audio context not available');
-        return;
+        Howler.volume(0.8);
       }
-      
-      if (!analyser) {
+
+      if (!analyser && Howler.ctx) {
         analyser = Howler.ctx.createAnalyser();
         analyser.fftSize = 256;
         analyser.smoothingTimeConstant = 0.92;
@@ -657,9 +679,18 @@
         analyser.maxDecibels = -10;
         dataArray = new Uint8Array(analyser.frequencyBinCount);
       }
-      
-      if (Howler.ctx.state === 'suspended') {
-        Howler.ctx.resume();
+
+      // Connect analyser into the master audio chain (once)
+      // Howler.masterGain → analyser → ctx.destination
+      if (analyser && Howler.masterGain && !analyserConnected) {
+        try {
+          Howler.masterGain.disconnect();
+          Howler.masterGain.connect(analyser);
+          analyser.connect(Howler.ctx.destination);
+          analyserConnected = true;
+        } catch (e) {
+          console.warn('Failed to connect analyser:', e);
+        }
       }
     }
 
@@ -673,35 +704,39 @@
 
     function togglePlay() {
       if (playBtn.classList.contains('loading')) return;
-      
+
       // Toggle Pomodoro Timer (music follows automatically)
       togglePomodoro();
-      
+
       resetHideTimer();
     }
 
-    function startPlayback() {
+    async function startPlayback() {
       playBtn.classList.add('loading');
-      
+
       // Force unlock audio on iOS - this is critical
       // Create and resume AudioContext on user interaction
       if (!Howler.ctx) {
-        // This forces Howler to create the AudioContext
         Howler.volume(0.8);
       }
-      
+
       // Resume AudioContext if suspended (required on iOS)
+      // MUST await this - iOS requires it to complete before playing
       if (Howler.ctx && Howler.ctx.state === 'suspended') {
-        Howler.ctx.resume();
+        try {
+          await Howler.ctx.resume();
+        } catch (e) {
+          console.warn('Failed to resume AudioContext:', e);
+        }
       }
-      
+
       if (!currentHowl) {
         loadTrack();
       }
-      
+
       // Initialize audio context for analysis
       initAudioContext();
-      
+
       // Check if already loaded
       if (currentHowl.state() === 'loaded') {
         playAudioAndStart();
@@ -718,40 +753,21 @@
         });
       }
     }
-    
+
     async function playAudioAndStart() {
       // Ensure Web Audio context is resumed on iOS
       if (Howler.ctx && Howler.ctx.state === 'suspended') {
-        Howler.ctx.resume();
-      }
-      
-      // Connect Howler's audio node to analyser before playing
-      if (analyser && Howler.ctx) {
         try {
-          // Access Howler's masterGain node and connect to analyser
-          // Note: Howler exposes its internal nodes through _sounds[0]._node
-          const sound = currentHowl._sounds[0];
-          if (sound && sound._node) {
-            // Disconnect any existing connections first
-            try {
-              sound._node.disconnect(analyser);
-            } catch (e) {
-              // Ignore if not connected
-            }
-            // Connect the source to our analyser
-            sound._node.connect(analyser);
-          }
+          await Howler.ctx.resume();
         } catch (e) {
-          console.error('Failed to connect Howler to analyser:', e);
+          console.warn('Failed to resume AudioContext:', e);
         }
       }
-      
-      // Try to play, handle errors
-      try {
-        currentHowl.play();
-      } catch (e) {
-        console.error('Failed to play:', e);
-      }
+
+      // Analyser is already connected via masterGain in initAudioContext()
+      // No need to connect individual sound nodes
+
+      currentHowl.play();
       onPlaybackStart();
     }
 
@@ -867,41 +883,41 @@
     let frameCount = 0;
     function visualize() {
       frameCount++;
-      
+
       // Update progress ring (always update for Pomodoro)
       updateProgress();
-      
+
       // Only do audio visualization when music is playing
       let audioIntensity = 0;
-      
+
       // Only do audio visualization when music is actually playing
       if (currentHowl && currentHowl.playing()) {
         // Get audio frequency data if available
         if (analyser && dataArray) {
           analyser.getByteFrequencyData(dataArray);
-          
+
           // Capture low frequencies: bass + low-mids for piano and kick drum
           // fftSize 256 = 128 bins. With 44.1kHz sample rate:
           // bin 0-7 (~0-1300Hz): captures bass notes, low piano chords, kick drum
           const lowBinCount = Math.min(8, dataArray.length);
           let lowSum = 0;
-          
+
           for (let i = 0; i < lowBinCount; i++) {
             lowSum += dataArray[i];
           }
-          
+
           // Calculate current frame energy (normalized 0-1)
           const currentEnergy = lowSum / lowBinCount / 255;
-          
+
           // ONSET DETECTION: Detect sudden energy increase (attack/beat)
           const energyDelta = currentEnergy - previousEnergy;
           let onsetStrength = 0;
-          
+
           if (energyDelta > onsetThreshold) {
             // Onset detected! Calculate strength based on how sharp the increase is
             onsetStrength = Math.min(1, energyDelta * onsetSensitivity);
           }
-          
+
           // Update visual intensity:
           // 1. If there's an onset, add it to current intensity (stacking for strong beats)
           // 2. Always apply decay to create fade-out effect
@@ -909,16 +925,16 @@
             // Add new onset to existing intensity (cap at 1.0)
             visualIntensity = Math.min(1.0, visualIntensity + onsetStrength * 0.8);
           }
-          
+
           // Apply decay every frame
           visualIntensity *= decayRate;
-          
+
           // Minimum breathing level so it's never completely flat
           visualIntensity = Math.max(0.12, visualIntensity);
-          
+
           // Store current energy for next frame
           previousEnergy = currentEnergy;
-          
+
           // Use visualIntensity directly (no additional smoothing needed due to decay)
           audioIntensity = visualIntensity;
         }
@@ -928,16 +944,16 @@
         previousEnergy = 0;
         audioIntensity = 0.12;
       }
-      
+
       // Less smoothing for more responsive pulse effect
       smoothedIntensity = smoothedIntensity + (audioIntensity - smoothedIntensity) * 0.25;
-      
+
       // Calculate scale based on audio intensity - more dramatic range
       const baseScale = 1;
       const maxScale = 1.2;
       const targetScale = baseScale + smoothedIntensity * (maxScale - baseScale);
       smoothedScale = smoothedScale + (targetScale - smoothedScale) * 0.15;
-      
+
       // Get scene color
       const baseColor = {
         begin: [244, 197, 105],  // 朝阳金橙色
@@ -945,15 +961,15 @@
         flow: [232, 184, 74],    // 琥珀金
         unwind: [201, 132, 110]  // 日落红
       }[scenes[currentSceneIndex].id] || [168, 200, 236];
-      
+
       // Dynamic opacity based on intensity
       const opacity = 0.8 + smoothedIntensity * 0.15;
-      
+
       // Dynamic glow based on intensity - smaller, more subtle range
       const glowSize = 30 + smoothedIntensity * 60; // 30 to 90px
       const glowAlpha = 0.4 + smoothedIntensity * 0.3; // More subtle base glow
       const glowColor = `rgba(${baseColor.join(',')}, ${glowAlpha})`;
-      
+
       playBtn.style.transform = `scale(${smoothedScale})`;
       playBtn.style.boxShadow = `0 0 ${glowSize}px ${smoothedIntensity * 15}px ${glowColor}`;
       playBtn.style.borderColor = `rgba(${baseColor.join(',')}, ${0.5 + smoothedIntensity * 0.3})`;
@@ -972,7 +988,7 @@
 
     function updatePomodoroDisplay() {
       timerDisplay.textContent = formatTime(pomodoroTimeRemaining);
-      
+
       // Set scene-specific color
       const sceneColors = {
         begin: 'rgba(244, 197, 105, ',
@@ -998,7 +1014,7 @@
             completePomodoroSession();
           }
         }, 1000);
-        
+
         // Auto-play music when pomodoro starts
         startPlayback();
       }
@@ -1011,7 +1027,7 @@
         clearInterval(pomodoroInterval);
         pomodoroInterval = null;
         stopVisualizationLoop(); // Stop visualization loop
-        
+
         // Auto-pause music when pomodoro pauses
         pausePlayback();
       }
@@ -1029,10 +1045,10 @@
       clearInterval(pomodoroInterval);
       pomodoroInterval = null;
       timerDisplay.classList.remove('active');
-      
+
       // Show completion feedback
       showCompletionFeedback();
-      
+
       // Vibrate if on mobile
       if (navigator.vibrate) {
         navigator.vibrate([100, 50, 100]);
@@ -1042,18 +1058,18 @@
     function showCompletionFeedback() {
       // Save original content
       const originalContent = timerDisplay.textContent;
-      
+
       // Show checkmark
       timerDisplay.textContent = '✓';
       timerDisplay.style.fontSize = '24px';
       timerDisplay.style.opacity = '1';
-      
+
       // Restore after 2 seconds
       setTimeout(() => {
         timerDisplay.textContent = originalContent;
         timerDisplay.style.fontSize = '';
         timerDisplay.style.opacity = '';
-        
+
         // Reset to work mode
         pomodoroIsWorkSession = true;
         pomodoroTimeRemaining = pomodoroWorkDuration;
@@ -1072,7 +1088,7 @@
     // Long press to reset
     let pomodoroLongPressTimer;
     let pomodoroIsLongPress = false;
-    
+
     timerDisplay.addEventListener('mousedown', (e) => {
       e.preventDefault();
       pomodoroIsLongPress = false;
@@ -1121,7 +1137,7 @@
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
       touchStartTime = Date.now();
-      
+
       longPressTimer = setTimeout(() => {
         volumeOverlay.classList.add('active');
       }, 600);
@@ -1133,7 +1149,7 @@
 
     document.addEventListener('touchend', (e) => {
       clearTimeout(longPressTimer);
-      
+
       if (volumeOverlay.classList.contains('active')) {
         setTimeout(() => volumeOverlay.classList.remove('active'), 1500);
         return;
@@ -1199,27 +1215,32 @@
     resetHideTimer();
     updatePomodoroDisplay(); // Initialize Pomodoro timer display
     startVisualizationLoop(); // Start visualization loop for Pomodoro progress ring
-    
+
     // Unlock audio on iOS - must happen on first user interaction
     let audioUnlocked = false;
-    function unlockAudio() {
+    async function unlockAudio() {
       if (audioUnlocked) return;
       audioUnlocked = true;
-      
+
       // Force Howler to create AudioContext
       Howler.volume(0.8);
-      
-      // Resume if suspended
+
+      // Resume if suspended - await to ensure completion
       if (Howler.ctx && Howler.ctx.state === 'suspended') {
-        Howler.ctx.resume();
+        try {
+          await Howler.ctx.resume();
+        } catch (e) {
+          console.warn('Failed to resume AudioContext:', e);
+        }
       }
-      
+
       console.log('Audio unlocked');
     }
-    
+
     // Unlock on first click/touch
     document.addEventListener('click', unlockAudio, { once: true });
     document.addEventListener('touchstart', unlockAudio, { once: true });
   </script>
 </body>
+
 </html>
