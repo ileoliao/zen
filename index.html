@@ -569,16 +569,42 @@
 
     function initAudioContext() {
       if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        // Create audio context with optimal latency hint
+        audioContext = new (window.AudioContext || window.webkitAudioContext)({
+          latencyHint: 'playback'
+        });
+        
+        // Create nodes
         analyser = audioContext.createAnalyser();
-        analyser.fftSize = 512; // Better frequency resolution for piano
-        analyser.smoothingTimeConstant = 0.85; // Smoother transitions
-        analyser.minDecibels = -90; // More sensitive to quiet sounds
+        analyser.fftSize = 512;
+        analyser.smoothingTimeConstant = 0.85;
+        analyser.minDecibels = -90;
         analyser.maxDecibels = -10;
+        
+        // Add compressor to prevent clipping/distortion
+        const compressor = audioContext.createDynamicsCompressor();
+        compressor.threshold.value = -24;  // Start compressing at -24dB
+        compressor.knee.value = 30;        // Soft knee for smooth transition
+        compressor.ratio.value = 12;       // Strong compression ratio
+        compressor.attack.value = 0.003;   // Fast attack (3ms)
+        compressor.release.value = 0.25;   // Medium release (250ms)
+        
+        // Add gain node for volume control
+        const gainNode = audioContext.createGain();
+        gainNode.gain.value = 0.9;         // Slight headroom to prevent clipping
+        
+        // Connect the chain: source -> analyser -> compressor -> gain -> destination
         const source = audioContext.createMediaElementSource(audio);
         source.connect(analyser);
-        analyser.connect(audioContext.destination);
+        analyser.connect(compressor);
+        compressor.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
         dataArray = new Uint8Array(analyser.frequencyBinCount);
+        
+        // Store references for cleanup if needed
+        audioContext._compressor = compressor;
+        audioContext._gainNode = gainNode;
       }
       if (audioContext.state === 'suspended') {
         audioContext.resume();
