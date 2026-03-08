@@ -436,6 +436,7 @@
 
     // Dual audio source: Howler for playback, hidden audio + Web Audio API for analysis
     let analysisAudio = null;
+    let analysisBlobUrl = null;
     let audioContext = null;
     let analyser = null;
     let dataArray = null;
@@ -543,6 +544,11 @@
         if (analysisAudio.parentNode) {
           analysisAudio.parentNode.removeChild(analysisAudio);
         }
+        // Revoke blob URL if exists
+        if (analysisBlobUrl) {
+          URL.revokeObjectURL(analysisBlobUrl);
+          analysisBlobUrl = null;
+        }
       }
       
       // Use preloaded Howl or create new one
@@ -557,14 +563,27 @@
         });
       }
       
-      // Create hidden audio element for analysis
-      analysisAudio = document.createElement('audio');
-      analysisAudio.crossOrigin = 'anonymous';
-      analysisAudio.src = `music/${file}`;
-      analysisAudio.preload = 'auto';
-      analysisAudio.volume = 0; // Muted - we only use it for analysis
-      analysisAudio.style.display = 'none';
-      document.body.appendChild(analysisAudio);
+      // Create hidden audio element for analysis using blob URL to avoid CORS
+      const audioPath = `music/${file}`;
+      fetch(audioPath)
+        .then(response => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.blob();
+        })
+        .then(blob => {
+          analysisBlobUrl = URL.createObjectURL(blob);
+          analysisAudio = document.createElement('audio');
+          analysisAudio.crossOrigin = 'anonymous';
+          analysisAudio.src = analysisBlobUrl;
+          analysisAudio.preload = 'auto';
+          analysisAudio.volume = 0;
+          analysisAudio.style.display = 'none';
+          document.body.appendChild(analysisAudio);
+          console.log('Analysis audio created with blob URL:', analysisBlobUrl);
+        })
+        .catch(err => {
+          console.error('Failed to load audio for analysis:', err);
+        });
       
       // Set up event listeners
       currentHowl.on('end', onTrackEnd);
