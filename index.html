@@ -117,6 +117,7 @@
       align-items: center;
       justify-content: center;
       transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid rgba(255,255,255,0.1);
     }
 
     .play-button:hover {
@@ -347,6 +348,8 @@
     let analyser = null;
     let dataArray = null;
     let animationId = null;
+    let smoothedIntensity = 0;
+    let smoothedScale = 1;
 
     const sceneIndicator = document.getElementById('sceneIndicator');
     const sceneName = document.getElementById('sceneName');
@@ -366,6 +369,29 @@
     let touchStartY = 0;
     let touchStartTime = 0;
     let longPressTimer;
+    const preloadedAudio = {};
+
+    // Preload all music files
+    function preloadAllMusic() {
+      const allFiles = [];
+      scenes.forEach(scene => {
+        scene.tracks.forEach(track => {
+          if (!allFiles.includes(track.file)) {
+            allFiles.push(track.file);
+          }
+        });
+      });
+
+      allFiles.forEach(file => {
+        const audioEl = new Audio();
+        audioEl.preload = 'auto';
+        audioEl.src = `music/${file}`;
+        preloadedAudio[file] = audioEl;
+      });
+    }
+
+    // Start preloading on page load
+    preloadAllMusic();
 
     function getSceneByTime() {
       const hour = new Date().getHours();
@@ -393,8 +419,13 @@
       trackName.textContent = track.title;
       trackArtist.textContent = track.artist;
       
-      // Set actual audio source
-      audio.src = `music/${track.file}`;
+      // Use preloaded audio if available, otherwise set src
+      if (preloadedAudio[track.file]) {
+        // Clone the preloaded audio to avoid sharing the same element
+        audio.src = preloadedAudio[track.file].src;
+      } else {
+        audio.src = `music/${track.file}`;
+      }
     }
 
     function togglePlay() {
@@ -418,8 +449,12 @@
         // Reset visual effects
         playBtn.style.transform = '';
         playBtn.style.boxShadow = '';
+        playBtn.style.borderColor = '';
+        playBtn.style.opacity = '';
         progressRing.style.stroke = '';
         progressRing.style.filter = '';
+        smoothedIntensity = 0;
+        smoothedScale = 1;
       }
       
       resetHideTimer();
@@ -429,7 +464,10 @@
       if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
+        analyser.fftSize = 512; // Better frequency resolution for piano
+        analyser.smoothingTimeConstant = 0.85; // Smoother transitions
+        analyser.minDecibels = -90; // More sensitive to quiet sounds
+        analyser.maxDecibels = -10;
         const source = audioContext.createMediaElementSource(audio);
         source.connect(analyser);
         analyser.connect(audioContext.destination);
@@ -445,35 +483,43 @@
       
       analyser.getByteFrequencyData(dataArray);
       
-      // Calculate average frequency
-      let sum = 0;
-      for (let i = 0; i < dataArray.length; i++) {
-        sum += dataArray[i];
-      }
-      const average = sum / dataArray.length;
-      const intensity = average / 255; // 0 to 1
+      // Piano-friendly frequency analysis
+      // Piano range: A0(27.5Hz) to C8(4186Hz) - mostly in mid-range
       
-      // Get bass frequencies (first 20 bins)
+      // Get bass frequencies (0-200Hz, bins 0-5) - for left hand piano
       let bassSum = 0;
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 6; i++) {
         bassSum += dataArray[i];
       }
-      const bassIntensity = bassSum / 20 / 255;
+      const bassIntensity = bassSum / 6 / 255;
       
-      // Get mid-high frequencies (rest)
+      // Get mid frequencies (200-2000Hz, bins 6-50) - MAIN PIANO RANGE
       let midSum = 0;
-      for (let i = 20; i < dataArray.length; i++) {
+      for (let i = 6; i < 50; i++) {
         midSum += dataArray[i];
       }
-      const midIntensity = midSum / (dataArray.length - 20) / 255;
+      const midIntensity = midSum / (50 - 6) / 255;
       
-      // Calculate dynamic scale based on music intensity
+      // Get high frequencies (2000Hz+, bins 51+) - piano harmonics
+      let highSum = 0;
+      for (let i = 50; i < dataArray.length; i++) {
+        highSum += dataArray[i];
+      }
+      const highIntensity = highSum / (dataArray.length - 50) / 255;
+      
+      // Combined intensity - weighted toward mid-range for piano
+      let intensity = (bassIntensity * 0.3 + midIntensity * 0.5 + highIntensity * 0.2);
+      
+      // Exponential amplification for more sensitivity at low volumes
+      // Piano is often gentle, so we need to boost lower intensities
+      intensity = Math.pow(intensity, 0.6);
+      
+      // Dynamic scale with more dramatic range
       const baseScale = 1;
-      const maxScale = 1.15;
+      const maxScale = 1.25; // Increased from 1.15
       const scale = baseScale + (intensity * (maxScale - baseScale));
       
-      // Dynamic color based on music - HSL for smooth transitions
-      // Bass affects hue rotation, intensity affects saturation and lightness
+      // Dynamic color with more sensitivity
       const baseHue = {
         begin: 35,
         deep: 210,
@@ -481,19 +527,35 @@
         unwind: 320
       }[scenes[currentSceneIndex].id] || 200;
       
-      const hueShift = bassIntensity * 30; // Bass shifts hue slightly
+      // More dramatic hue shifts based on bass
+      const hueShift = Math.sin(Date.now() / 2000) * 15 + bassIntensity * 25;
       const hue = baseHue + hueShift;
-      const saturation = 50 + (intensity * 40); // 50% to 90%
-      const lightness = 60 + (midIntensity * 20); // 60% to 80%
+      
+      // Higher base saturation for piano to make colors pop
+      const saturation = 45 + (intensity * 55); // 45% to 100%
+      const lightness = 55 + (midIntensity * 35); // 55% to 90%
+      
+      // Smooth transitions using lerp (linear interpolation)
+      const lerpFactor = 0.12; // Adjust for more/less smoothing (0.1 = smooth, 0.3 = responsive)
+      smoothedIntensity = smoothedIntensity + (intensity - smoothedIntensity) * lerpFactor;
+      smoothedScale = smoothedScale + (scale - smoothedScale) * lerpFactor;
       
       const glowColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-      const glowIntensity = 40 + (intensity * 60); // 40 to 100
       
-      // Apply dynamic styles
-      playBtn.style.transform = `scale(${scale})`;
-      playBtn.style.boxShadow = `0 0 ${glowIntensity}px -5px ${glowColor}`;
+      // Much more dramatic glow range based on smoothed intensity
+      const glowIntensity = 25 + (smoothedIntensity * 100); // 25 to 125
+      const glowBlur = 5 + (smoothedIntensity * 15); // 5 to 20
+      
+      // Apply dynamic styles with smoothed values
+      playBtn.style.transform = `scale(${smoothedScale})`;
+      playBtn.style.boxShadow = `0 0 ${glowIntensity}px -${glowBlur}px ${glowColor}`;
+      playBtn.style.borderColor = glowColor;
+      
       progressRing.style.stroke = glowColor;
-      progressRing.style.filter = `drop-shadow(0 0 ${intensity * 10}px ${glowColor})`;
+      progressRing.style.filter = `drop-shadow(0 0 ${smoothedIntensity * 15}px ${glowColor})`;
+      
+      // Add subtle opacity pulsing for extra life
+      playBtn.style.opacity = 0.85 + (smoothedIntensity * 0.15);
       
       animationId = requestAnimationFrame(visualize);
     }
