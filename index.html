@@ -555,7 +555,7 @@
       allFiles.forEach(file => {
         preloadedSounds[file] = new Howl({
           src: [`music/${file}`],
-          html5: false, // Use Web Audio API for visualization support
+          html5: false, // Use Web Audio API for visualization
           preload: true,
           volume: 0.8,
 
@@ -626,7 +626,7 @@
       } else {
         currentHowl = new Howl({
           src: [`music/${file}`],
-          html5: false, // Use Web Audio API
+          html5: false,
           volume: 0.8
         });
       }
@@ -683,6 +683,18 @@
     function startPlayback() {
       playBtn.classList.add('loading');
       
+      // Force unlock audio on iOS - this is critical
+      // Create and resume AudioContext on user interaction
+      if (!Howler.ctx) {
+        // This forces Howler to create the AudioContext
+        Howler.volume(0.8);
+      }
+      
+      // Resume AudioContext if suspended (required on iOS)
+      if (Howler.ctx && Howler.ctx.state === 'suspended') {
+        Howler.ctx.resume();
+      }
+      
       if (!currentHowl) {
         loadTrack();
       }
@@ -708,6 +720,11 @@
     }
     
     async function playAudioAndStart() {
+      // Ensure Web Audio context is resumed on iOS
+      if (Howler.ctx && Howler.ctx.state === 'suspended') {
+        Howler.ctx.resume();
+      }
+      
       // Connect Howler's audio node to analyser before playing
       if (analyser && Howler.ctx) {
         try {
@@ -729,7 +746,12 @@
         }
       }
       
-      currentHowl.play();
+      // Try to play, handle errors
+      try {
+        currentHowl.play();
+      } catch (e) {
+        console.error('Failed to play:', e);
+      }
       onPlaybackStart();
     }
 
@@ -1177,6 +1199,27 @@
     resetHideTimer();
     updatePomodoroDisplay(); // Initialize Pomodoro timer display
     startVisualizationLoop(); // Start visualization loop for Pomodoro progress ring
+    
+    // Unlock audio on iOS - must happen on first user interaction
+    let audioUnlocked = false;
+    function unlockAudio() {
+      if (audioUnlocked) return;
+      audioUnlocked = true;
+      
+      // Force Howler to create AudioContext
+      Howler.volume(0.8);
+      
+      // Resume if suspended
+      if (Howler.ctx && Howler.ctx.state === 'suspended') {
+        Howler.ctx.resume();
+      }
+      
+      console.log('Audio unlocked');
+    }
+    
+    // Unlock on first click/touch
+    document.addEventListener('click', unlockAudio, { once: true });
+    document.addEventListener('touchstart', unlockAudio, { once: true });
   </script>
 </body>
 </html>
