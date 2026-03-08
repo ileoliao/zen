@@ -16,10 +16,103 @@
     html, body {
       height: 100%;
       overflow: hidden;
-      background: #000;
+      background: #0a0a0f;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       color: #fff;
       touch-action: pan-y;
+    }
+
+    /* Elegant background layers */
+    .bg-layer {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* Deep gradient base */
+    .bg-gradient {
+      background: 
+        radial-gradient(ellipse at 20% 20%, rgba(232, 213, 183, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 80%, rgba(168, 200, 236, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(20, 20, 30, 0.8) 0%, rgba(10, 10, 15, 1) 100%);
+      transition: all 2s ease;
+    }
+
+    .bg-gradient.begin {
+      background: 
+        radial-gradient(ellipse at 30% 20%, rgba(232, 213, 183, 0.12) 0%, transparent 45%),
+        radial-gradient(ellipse at 70% 80%, rgba(212, 184, 200, 0.06) 0%, transparent 45%),
+        radial-gradient(ellipse at 50% 50%, rgba(25, 22, 18, 0.9) 0%, rgba(12, 10, 8, 1) 100%);
+    }
+
+    .bg-gradient.deep {
+      background: 
+        radial-gradient(ellipse at 25% 30%, rgba(168, 200, 236, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 75% 70%, rgba(100, 140, 180, 0.05) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(15, 18, 25, 0.9) 0%, rgba(8, 10, 15, 1) 100%);
+    }
+
+    .bg-gradient.flow {
+      background: 
+        radial-gradient(ellipse at 40% 25%, rgba(184, 212, 168, 0.1) 0%, transparent 45%),
+        radial-gradient(ellipse at 60% 75%, rgba(140, 180, 140, 0.05) 0%, transparent 45%),
+        radial-gradient(ellipse at 50% 50%, rgba(18, 22, 18, 0.9) 0%, rgba(10, 12, 10, 1) 100%);
+    }
+
+    .bg-gradient.unwind {
+      background: 
+        radial-gradient(ellipse at 35% 35%, rgba(212, 184, 200, 0.1) 0%, transparent 50%),
+        radial-gradient(ellipse at 65% 65%, rgba(180, 150, 170, 0.06) 0%, transparent 50%),
+        radial-gradient(ellipse at 50% 50%, rgba(22, 18, 22, 0.9) 0%, rgba(12, 10, 12, 1) 100%);
+    }
+
+    /* Subtle noise texture overlay */
+    .bg-noise {
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+      animation: noise 8s steps(10) infinite;
+    }
+
+    @keyframes noise {
+      0%, 100% { transform: translate(0, 0); }
+      10% { transform: translate(-5%, -5%); }
+      20% { transform: translate(-10%, 5%); }
+      30% { transform: translate(5%, -10%); }
+      40% { transform: translate(-5%, 15%); }
+      50% { transform: translate(-10%, 5%); }
+      60% { transform: translate(15%, 0); }
+      70% { transform: translate(0, 10%); }
+      80% { transform: translate(-15%, 0); }
+      90% { transform: translate(10%, 5%); }
+    }
+
+    /* Slow flowing aurora effect */
+    .bg-aurora {
+      background: 
+        radial-gradient(circle at 30% 50%, rgba(255,255,255,0.02) 0%, transparent 50%),
+        radial-gradient(circle at 70% 50%, rgba(255,255,255,0.015) 0%, transparent 50%);
+      animation: aurora 20s ease-in-out infinite;
+    }
+
+    @keyframes aurora {
+      0%, 100% {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+      }
+      33% {
+        transform: translateX(5%) scale(1.05);
+        opacity: 0.8;
+      }
+      66% {
+        transform: translateX(-5%) scale(0.95);
+        opacity: 0.9;
+      }
+    }
+
+    /* Vignette overlay for depth */
+    .bg-vignette {
+      background: radial-gradient(circle at 50% 50%, transparent 0%, rgba(0,0,0,0.4) 100%);
     }
 
     .app {
@@ -29,6 +122,7 @@
       align-items: center;
       justify-content: center;
       position: relative;
+      z-index: 1;
     }
 
     .scene-indicator {
@@ -229,6 +323,12 @@
   </style>
 </head>
 <body>
+  <!-- Background layers -->
+  <div class="bg-layer bg-gradient" id="bgGradient"></div>
+  <div class="bg-layer bg-noise"></div>
+  <div class="bg-layer bg-aurora"></div>
+  <div class="bg-layer bg-vignette"></div>
+
   <div class="app" id="app">
     <div class="scene-indicator" id="sceneIndicator">
       <div class="scene-label">Current State</div>
@@ -336,6 +436,7 @@
     const swipeHint = document.getElementById('swipeHint');
     const volumeOverlay = document.getElementById('volumeOverlay');
     const volumeFill = document.getElementById('volumeFill');
+    const bgGradient = document.getElementById('bgGradient');
 
     let hideTimeout;
     let touchStartX = 0;
@@ -381,12 +482,17 @@
     function loadScene(index) {
       currentSceneIndex = index;
       const scene = scenes[index];
-      
+
       sceneName.textContent = scene.name;
       sceneName.className = 'scene-name ' + scene.id;
       playBtn.className = 'play-button ' + scene.id + (isPlaying ? ' playing' : '');
       progressRing.className = 'progress-ring-fill ' + scene.id;
-      
+
+      // Update background gradient based on scene
+      if (bgGradient) {
+        bgGradient.className = 'bg-layer bg-gradient ' + scene.id;
+      }
+
       currentTrackIndex = 0;
       loadTrack();
     }
