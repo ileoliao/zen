@@ -644,10 +644,17 @@
       });
 
       // Start preloading in priority order
-      // Preloading via Howler is disabled for iOS because we use the native <audio> 
-      // tag which handles its own streaming, and we don't want Howler's hidden tags
-      // stealing the hardware audio session token from our single active element.
-      if (isIOS) return;
+      // On desktop, we use Howler to preload via Web Audio API.
+      // On iOS, we fetch the audio files directly into the browser's disk cache
+      // because iOS Safari refuses to preload <audio> elements before user interaction.
+      if (isIOS) {
+        allFiles.forEach(file => {
+          fetch(`music/${file}`, { mode: 'no-cors' }).catch(err => {
+            console.warn(`Failed to pre-cache ${file} on iOS:`, err);
+          });
+        });
+        return;
+      }
 
       allFiles.forEach(file => {
         preloadedSounds[file] = new Howl({
@@ -1353,6 +1360,12 @@
     resetHideTimer();
     updatePomodoroDisplay(); // Initialize Pomodoro timer display
     startVisualizationLoop(); // Start visualization loop for Pomodoro progress ring
+
+    // Aggressively preload on iOS via fetch() without waiting for user interaction
+    // Desktop will wait for unlockAudio() to avoid Web Audio warnings.
+    if (isIOS) {
+      preloadAllMusic();
+    }
 
     // Unlock audio on iOS - must happen on first user interaction
     let audioUnlocked = false;
