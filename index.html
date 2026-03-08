@@ -28,6 +28,9 @@
       inset: 0;
       z-index: 0;
       pointer-events: none;
+      overflow: hidden;
+      min-width: 100vw;
+      min-height: 100vh;
     }
 
     /* Deep gradient base */
@@ -40,51 +43,68 @@
     }
 
     .bg-gradient.begin {
-      background: 
-        radial-gradient(ellipse at 30% 20%, rgba(232, 213, 183, 0.12) 0%, transparent 45%),
-        radial-gradient(ellipse at 70% 80%, rgba(212, 184, 200, 0.06) 0%, transparent 45%),
-        radial-gradient(ellipse at 50% 50%, rgba(25, 22, 18, 0.9) 0%, rgba(12, 10, 8, 1) 100%);
+      background:
+        /* 朝阳主光芒 - 从左侧升起的金色阳光 */
+        radial-gradient(ellipse at 15% 30%, rgba(255, 200, 100, 0.2) 0%, transparent 50%),
+        /* 朝霞粉橙色过渡 */
+        radial-gradient(ellipse at 40% 20%, rgba(255, 160, 120, 0.12) 0%, transparent 45%),
+        /* 天空淡紫色 */
+        radial-gradient(ellipse at 70% 25%, rgba(200, 160, 200, 0.08) 0%, transparent 50%),
+        /* 底部深色地平线 */
+        radial-gradient(ellipse at 50% 100%, rgba(40, 30, 35, 0.6) 0%, transparent 60%),
+        /* 基础暗色背景 */
+        radial-gradient(ellipse at 50% 50%, rgba(30, 25, 30, 0.95) 0%, rgba(15, 12, 15, 1) 100%);
     }
 
     .bg-gradient.deep {
-      background: 
-        radial-gradient(ellipse at 25% 30%, rgba(168, 200, 236, 0.1) 0%, transparent 50%),
-        radial-gradient(ellipse at 75% 70%, rgba(100, 140, 180, 0.05) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 50%, rgba(15, 18, 25, 0.9) 0%, rgba(8, 10, 15, 1) 100%);
+      background:
+        /* 深海主光源 - 深邃的蓝色光芒 */
+        radial-gradient(ellipse at 30% 40%, rgba(80, 140, 200, 0.18) 0%, transparent 55%),
+        /* 中层水域的幽蓝 */
+        radial-gradient(ellipse at 70% 60%, rgba(60, 100, 160, 0.1) 0%, transparent 50%),
+        /* 深海暗处 */
+        radial-gradient(ellipse at 50% 50%, rgba(12, 20, 35, 0.95) 0%, rgba(8, 12, 22, 1) 100%);
     }
 
     .bg-gradient.flow {
-      background: 
-        radial-gradient(ellipse at 40% 25%, rgba(184, 212, 168, 0.1) 0%, transparent 45%),
-        radial-gradient(ellipse at 60% 75%, rgba(140, 180, 140, 0.05) 0%, transparent 45%),
-        radial-gradient(ellipse at 50% 50%, rgba(18, 22, 18, 0.9) 0%, rgba(10, 12, 10, 1) 100%);
+      background:
+        /* 下午暖阳 - 琥珀色光芒 */
+        radial-gradient(ellipse at 35% 35%, rgba(232, 184, 74, 0.15) 0%, transparent 50%),
+        /* 蜂蜜色调过渡 */
+        radial-gradient(ellipse at 65% 50%, rgba(200, 160, 80, 0.1) 0%, transparent 45%),
+        /* 温暖的工作氛围 */
+        radial-gradient(ellipse at 50% 50%, rgba(30, 25, 20, 0.92) 0%, rgba(18, 15, 12, 1) 100%);
     }
 
     .bg-gradient.unwind {
-      background: 
-        radial-gradient(ellipse at 35% 35%, rgba(212, 184, 200, 0.1) 0%, transparent 50%),
-        radial-gradient(ellipse at 65% 65%, rgba(180, 150, 170, 0.06) 0%, transparent 50%),
-        radial-gradient(ellipse at 50% 50%, rgba(22, 18, 22, 0.9) 0%, rgba(12, 10, 12, 1) 100%);
+      background:
+        /* 日落余晖 - 深红/酒红色光芒 */
+        radial-gradient(ellipse at 40% 45%, rgba(180, 100, 80, 0.16) 0%, transparent 50%),
+        /* 黄昏的暖橙过渡 */
+        radial-gradient(ellipse at 60% 55%, rgba(160, 90, 70, 0.1) 0%, transparent 48%),
+        /* 夜晚降临的深色 */
+        radial-gradient(ellipse at 50% 50%, rgba(25, 18, 20, 0.94) 0%, rgba(15, 12, 14, 1) 100%);
     }
 
     /* Subtle noise texture overlay */
     .bg-noise {
       opacity: 0.03;
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-      animation: noise 8s steps(10) infinite;
+      background-size: 300% 300%;
+      animation: noise 15s steps(10) infinite;
     }
 
     @keyframes noise {
       0%, 100% { transform: translate(0, 0); }
-      10% { transform: translate(-5%, -5%); }
-      20% { transform: translate(-10%, 5%); }
-      30% { transform: translate(5%, -10%); }
-      40% { transform: translate(-5%, 15%); }
-      50% { transform: translate(-10%, 5%); }
-      60% { transform: translate(15%, 0); }
-      70% { transform: translate(0, 10%); }
-      80% { transform: translate(-15%, 0); }
-      90% { transform: translate(10%, 5%); }
+      10% { transform: translate(-0.5%, -0.5%); }
+      20% { transform: translate(-1%, 0.5%); }
+      30% { transform: translate(0.5%, -1%); }
+      40% { transform: translate(-0.5%, 1%); }
+      50% { transform: translate(-1%, 0.5%); }
+      60% { transform: translate(1%, 0); }
+      70% { transform: translate(0, 1%); }
+      80% { transform: translate(-1%, 0); }
+      90% { transform: translate(0.5%, 0.5%); }
     }
 
     /* Slow flowing aurora effect */
@@ -92,7 +112,8 @@
       background: 
         radial-gradient(circle at 30% 50%, rgba(255,255,255,0.02) 0%, transparent 50%),
         radial-gradient(circle at 70% 50%, rgba(255,255,255,0.015) 0%, transparent 50%);
-      animation: aurora 20s ease-in-out infinite;
+      background-size: 150% 150%;
+      animation: aurora 40s ease-in-out infinite;
     }
 
     @keyframes aurora {
@@ -101,11 +122,11 @@
         opacity: 1;
       }
       33% {
-        transform: translateX(5%) scale(1.05);
+        transform: translateX(0.5%) scale(1.005);
         opacity: 0.8;
       }
       66% {
-        transform: translateX(-5%) scale(0.95);
+        transform: translateX(-0.5%) scale(0.995);
         opacity: 0.9;
       }
     }
@@ -153,10 +174,10 @@
       transition: color 0.6s ease;
     }
 
-    .scene-name.begin { color: #e8d5b7; }
-    .scene-name.deep { color: #a8c8ec; }
-    .scene-name.flow { color: #b8d4a8; }
-    .scene-name.unwind { color: #d4b8c8; }
+    .scene-name.begin { color: #f4c569; }
+    .scene-name.deep { color: #7eb8e8; }
+    .scene-name.flow { color: #e8b84a; }
+    .scene-name.unwind { color: #c9846e; }
 
     .player-container {
       position: relative;
@@ -782,10 +803,10 @@
       
       // Get scene color
       const baseColor = {
-        begin: [232, 213, 183],
-        deep: [168, 200, 236],
-        flow: [184, 212, 168],
-        unwind: [212, 184, 200]
+        begin: [244, 197, 105],  // 朝阳金橙色
+        deep: [126, 184, 232],   // 深海蓝
+        flow: [232, 184, 74],    // 琥珀金
+        unwind: [201, 132, 110]  // 日落红
       }[scenes[currentSceneIndex].id] || [168, 200, 236];
       
       // Dynamic opacity based on intensity
