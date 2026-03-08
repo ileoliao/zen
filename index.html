@@ -25,70 +25,76 @@
     /* Elegant background layers */
     .bg-layer {
       position: fixed;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
+      top: -25%;
+      left: -25%;
+      width: 150%;
+      height: 150%;
       z-index: 0;
       pointer-events: none;
     }
 
-    /* Deep gradient base - all with 100% transparency radius to avoid edges */
+    /* Deep gradient base with richer layers */
     .bg-gradient {
       background: 
-        radial-gradient(ellipse at 20% 20%, rgba(232, 213, 183, 0.08) 0%, transparent 100%),
-        radial-gradient(ellipse at 80% 80%, rgba(168, 200, 236, 0.06) 0%, transparent 100%),
-        radial-gradient(ellipse at 50% 50%, rgba(20, 20, 30, 0.8) 0%, rgba(10, 10, 15, 1) 100%);
+        radial-gradient(ellipse at 20% 20%, rgba(232, 213, 183, 0.1) 0%, transparent 70%),
+        radial-gradient(ellipse at 80% 80%, rgba(168, 200, 236, 0.08) 0%, transparent 70%),
+        radial-gradient(ellipse at 50% 50%, rgba(15, 15, 20, 1) 0%, rgba(8, 8, 12, 1) 100%);
       transition: all 2s ease;
     }
 
     .bg-gradient.begin {
       background:
         /* 朝阳主光芒 - 从左侧升起的金色阳光 */
-        radial-gradient(ellipse at 15% 30%, rgba(255, 200, 100, 0.2) 0%, transparent 100%),
+        radial-gradient(ellipse at 20% 35%, rgba(255, 200, 100, 0.25) 0%, transparent 60%),
         /* 朝霞粉橙色过渡 */
-        radial-gradient(ellipse at 40% 20%, rgba(255, 160, 120, 0.12) 0%, transparent 100%),
+        radial-gradient(ellipse at 45% 25%, rgba(255, 160, 120, 0.18) 0%, transparent 55%),
         /* 天空淡紫色 */
-        radial-gradient(ellipse at 70% 25%, rgba(200, 160, 200, 0.08) 0%, transparent 100%),
+        radial-gradient(ellipse at 75% 30%, rgba(200, 160, 200, 0.12) 0%, transparent 65%),
         /* 底部深色地平线 */
-        radial-gradient(ellipse at 50% 100%, rgba(40, 30, 35, 0.6) 0%, transparent 100%),
+        radial-gradient(ellipse at 50% 100%, rgba(40, 30, 35, 0.7) 0%, transparent 70%),
         /* 基础暗色背景 */
-        radial-gradient(ellipse at 50% 50%, rgba(30, 25, 30, 0.95) 0%, rgba(15, 12, 15, 1) 100%);
+        radial-gradient(ellipse at 50% 50%, rgba(25, 20, 22, 1) 0%, rgba(12, 10, 10, 1) 100%);
     }
 
     .bg-gradient.deep {
       background:
         /* 深海主光源 - 深邃的蓝色光芒 */
-        radial-gradient(ellipse at 30% 40%, rgba(80, 140, 200, 0.18) 0%, transparent 100%),
+        radial-gradient(ellipse at 35% 45%, rgba(80, 140, 200, 0.22) 0%, transparent 65%),
         /* 中层水域的幽蓝 */
-        radial-gradient(ellipse at 70% 60%, rgba(60, 100, 160, 0.1) 0%, transparent 100%),
+        radial-gradient(ellipse at 65% 65%, rgba(60, 100, 160, 0.15) 0%, transparent 60%),
+        /* 深层水波的微光 */
+        radial-gradient(ellipse at 50% 80%, rgba(40, 80, 140, 0.1) 0%, transparent 70%),
         /* 深海暗处 */
-        radial-gradient(ellipse at 50% 50%, rgba(12, 20, 35, 0.95) 0%, rgba(8, 12, 22, 1) 100%);
+        radial-gradient(ellipse at 50% 50%, rgba(10, 15, 25, 1) 0%, rgba(6, 10, 18, 1) 100%);
     }
 
     .bg-gradient.flow {
       background:
         /* 下午暖阳 - 琥珀色光芒 */
-        radial-gradient(ellipse at 35% 35%, rgba(232, 184, 74, 0.15) 0%, transparent 100%),
+        radial-gradient(ellipse at 40% 40%, rgba(232, 184, 74, 0.2) 0%, transparent 60%),
         /* 蜂蜜色调过渡 */
-        radial-gradient(ellipse at 65% 50%, rgba(200, 160, 80, 0.1) 0%, transparent 100%),
+        radial-gradient(ellipse at 60% 55%, rgba(200, 160, 80, 0.15) 0%, transparent 55%),
+        /* 侧面的暖光 */
+        radial-gradient(ellipse at 80% 30%, rgba(220, 170, 90, 0.1) 0%, transparent 65%),
         /* 温暖的工作氛围 */
-        radial-gradient(ellipse at 50% 50%, rgba(30, 25, 20, 0.92) 0%, rgba(18, 15, 12, 1) 100%);
+        radial-gradient(ellipse at 50% 50%, rgba(28, 22, 18, 1) 0%, rgba(15, 12, 10, 1) 100%);
     }
 
     .bg-gradient.unwind {
       background:
         /* 日落余晖 - 深红/酒红色光芒 */
-        radial-gradient(ellipse at 40% 45%, rgba(180, 100, 80, 0.16) 0%, transparent 100%),
+        radial-gradient(ellipse at 45% 50%, rgba(180, 100, 80, 0.22) 0%, transparent 60%),
         /* 黄昏的暖橙过渡 */
-        radial-gradient(ellipse at 60% 55%, rgba(160, 90, 70, 0.1) 0%, transparent 100%),
+        radial-gradient(ellipse at 55% 60%, rgba(160, 90, 70, 0.15) 0%, transparent 55%),
+        /* 上方的紫调 */
+        radial-gradient(ellipse at 30% 25%, rgba(140, 100, 120, 0.12) 0%, transparent 65%),
         /* 夜晚降临的深色 */
-        radial-gradient(ellipse at 50% 50%, rgba(25, 18, 20, 0.94) 0%, rgba(15, 12, 14, 1) 100%);
+        radial-gradient(ellipse at 50% 50%, rgba(22, 15, 18, 1) 0%, rgba(12, 10, 12, 1) 100%);
     }
 
     /* Subtle noise texture overlay */
     .bg-noise {
-      opacity: 0.03;
+      opacity: 0.05;
       background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
       background-size: 300% 300%;
       animation: noise 15s steps(10) infinite;
