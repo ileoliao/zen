@@ -499,27 +499,36 @@
       // Initialize audio context for analysis
       initAudioContext();
       
+      // Make sure analysis audio is loaded and ready
+      if (analysisAudio && analysisAudio.readyState < 2) {
+        analysisAudio.load();
+      }
+      
       // Check if already loaded
       if (currentHowl.state() === 'loaded') {
-        currentHowl.play();
-        // Start analysis audio in sync
-        if (analysisAudio) {
-          analysisAudio.currentTime = 0;
-          analysisAudio.play().catch(e => console.log('Analysis audio play failed:', e));
-        }
-        onPlaybackStart();
-      } else {
+        playAudioAndStart();
+      } else if (currentHowl.state() === 'loading') {
         // Wait for load
         currentHowl.once('load', () => {
-          currentHowl.play();
-          // Start analysis audio in sync
-          if (analysisAudio) {
-            analysisAudio.currentTime = 0;
-            analysisAudio.play().catch(e => console.log('Analysis audio play failed:', e));
-          }
-          onPlaybackStart();
+          playAudioAndStart();
+        });
+      } else {
+        // State is 'unloaded', need to load first
+        currentHowl.load();
+        currentHowl.once('load', () => {
+          playAudioAndStart();
         });
       }
+    }
+    
+    function playAudioAndStart() {
+      currentHowl.play();
+      // Start analysis audio in sync
+      if (analysisAudio) {
+        analysisAudio.currentTime = 0;
+        analysisAudio.play().catch(e => console.log('Analysis audio play failed:', e));
+      }
+      onPlaybackStart();
     }
 
     function onPlaybackStart() {
@@ -726,7 +735,8 @@
         } else {
           prevScene();
         }
-      } else if (duration < 200 && Math.abs(diffX) < 10) {
+      } else if (Math.abs(diffX) < 30) {
+        // Any tap/click (not swipe) shows UI, regardless of duration
         showUI();
       }
     }, { passive: true });
@@ -749,6 +759,13 @@
     volumeOverlay.addEventListener('touchmove', (e) => {
       setVolumeFromTouch(e.touches[0].clientY);
     }, { passive: true });
+
+    // Mouse click to show UI (exclude play button)
+    document.addEventListener('click', (e) => {
+      if (e.target !== playBtn && !playBtn.contains(e.target)) {
+        showUI();
+      }
+    });
 
     // Keyboard
     document.addEventListener('keydown', (e) => {
