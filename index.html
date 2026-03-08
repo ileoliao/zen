@@ -581,19 +581,35 @@
       'iPhone',
       'iPod'
     ].includes(navigator.platform)
-      // iPad on iOS 13 detection
-      || (navigator.userAgent.includes("Mac") && "ontouchend" in document);
-
-    const iosAudioPlayer = document.getElementById('iosAudioPlayer');
-
     // Wire up events for the iOS native fallback
     if (isIOS) {
       iosAudioPlayer.addEventListener('ended', onTrackEnd);
+
       iosAudioPlayer.addEventListener('error', (e) => {
         console.error('iOS Audio Player Error:', iosAudioPlayer.error);
         // Recovery logic on error
         pausePlayback();
       });
+
+      // Handle network buffering states
+      iosAudioPlayer.addEventListener('waiting', () => {
+        if (isPlaying) playBtn.classList.add('loading');
+      });
+
+      iosAudioPlayer.addEventListener('stalled', () => {
+        if (isPlaying) playBtn.classList.add('loading');
+      });
+
+      iosAudioPlayer.addEventListener('playing', () => {
+        playBtn.classList.remove('loading');
+      });
+
+      iosAudioPlayer.addEventListener('canplay', () => {
+        if (isPlaying && iosAudioPlayer.paused) {
+          iosAudioPlayer.play().catch(e => console.warn('iOS Auto-resume failed:', e));
+        }
+      });
+
       iosAudioPlayer.volume = 0.8;
     }
 
@@ -852,11 +868,14 @@
     function playAudioAndStart() {
       if (isIOS) {
         // Bypass Howler completely, directly manipulate native element
+        playBtn.classList.add('loading'); // Show loading until it actually starts
         iosAudioPlayer.play().then(() => {
           onPlaybackStart();
         }).catch(err => {
-          console.warn('iOS Native Play Failed:', err);
-          playBtn.classList.remove('loading');
+          // Play request interrupted by network/buffer wait is fine, 
+          // our 'playing' and 'canplay' listeners will catch it when it continues
+          console.warn('iOS Native Play Interrupted/Wait:', err);
+          // Don't remove loading spinner here, let the event listeners handle it
         });
       } else {
         // Desktop Web Audio Logic
