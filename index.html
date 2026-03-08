@@ -674,13 +674,8 @@
     function togglePlay() {
       if (playBtn.classList.contains('loading')) return;
       
-      isPlaying = !isPlaying;
-      
-      if (isPlaying) {
-        startPlayback();
-      } else {
-        pausePlayback();
-      }
+      // Toggle Pomodoro Timer (music follows automatically)
+      togglePomodoro();
       
       resetHideTimer();
     }
@@ -739,25 +734,41 @@
     }
 
     function onPlaybackStart() {
+      isPlaying = true;
       playBtn.classList.remove('loading');
       playIcon.style.display = 'none';
       pauseIcon.style.display = 'block';
       playBtn.classList.add('playing');
       showTrackInfo();
-      
-      if (animationId) cancelAnimationFrame(animationId);
-      visualize();
     }
 
     function pausePlayback() {
+      isPlaying = false;
       if (currentHowl) {
         currentHowl.pause();
       }
       playIcon.style.display = 'block';
       pauseIcon.style.display = 'none';
       playBtn.classList.remove('playing');
-      if (animationId) cancelAnimationFrame(animationId);
       resetVisualEffects();
+    }
+
+    // Start visualization loop for Pomodoro progress
+    function startVisualizationLoop() {
+      if (animationId) cancelAnimationFrame(animationId);
+      visualizeLoop();
+    }
+
+    function visualizeLoop() {
+      visualize();
+      animationId = requestAnimationFrame(visualizeLoop);
+    }
+
+    function stopVisualizationLoop() {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
     }
 
     function resetVisualEffects() {
@@ -815,9 +826,17 @@
     }
 
     function updateProgress() {
-      if (!currentHowl || !isPlaying) return;
-      const progress = currentHowl.seek() / currentHowl.duration();
+      // Show Pomodoro progress instead of music progress
+      // Ring fills up as time passes (empty → full)
       const circumference = 440;
+      if (!pomodoroIsRunning) {
+        // Show empty ring when not running
+        progressRing.style.strokeDashoffset = circumference;
+        return;
+      }
+      const totalDuration = pomodoroIsWorkSession ? pomodoroWorkDuration : pomodoroBreakDuration;
+      const elapsed = totalDuration - pomodoroTimeRemaining;
+      const progress = elapsed / totalDuration;
       const offset = circumference - (progress * circumference);
       progressRing.style.strokeDashoffset = offset;
     }
@@ -825,64 +844,67 @@
     // Audio-driven visualization
     let frameCount = 0;
     function visualize() {
-      if (!isPlaying) return;
-      
       frameCount++;
       
-      // Update progress ring
+      // Update progress ring (always update for Pomodoro)
       updateProgress();
       
+      // Only do audio visualization when music is playing
       let audioIntensity = 0;
       
-      // Get audio frequency data if available
-      if (analyser && dataArray) {
-        analyser.getByteFrequencyData(dataArray);
-        
-        // Capture low frequencies: bass + low-mids for piano and kick drum
-        // fftSize 256 = 128 bins. With 44.1kHz sample rate:
-        // bin 0-7 (~0-1300Hz): captures bass notes, low piano chords, kick drum
-        const lowBinCount = Math.min(8, dataArray.length);
-        let lowSum = 0;
-        
-        for (let i = 0; i < lowBinCount; i++) {
-          lowSum += dataArray[i];
+      // Only do audio visualization when music is actually playing
+      if (currentHowl && currentHowl.playing()) {
+        // Get audio frequency data if available
+        if (analyser && dataArray) {
+          analyser.getByteFrequencyData(dataArray);
+          
+          // Capture low frequencies: bass + low-mids for piano and kick drum
+          // fftSize 256 = 128 bins. With 44.1kHz sample rate:
+          // bin 0-7 (~0-1300Hz): captures bass notes, low piano chords, kick drum
+          const lowBinCount = Math.min(8, dataArray.length);
+          let lowSum = 0;
+          
+          for (let i = 0; i < lowBinCount; i++) {
+            lowSum += dataArray[i];
+          }
+          
+          // Calculate current frame energy (normalized 0-1)
+          const currentEnergy = lowSum / lowBinCount / 255;
+          
+          // ONSET DETECTION: Detect sudden energy increase (attack/beat)
+          const energyDelta = currentEnergy - previousEnergy;
+          let onsetStrength = 0;
+          
+          if (energyDelta > onsetThreshold) {
+            // Onset detected! Calculate strength based on how sharp the increase is
+            onsetStrength = Math.min(1, energyDelta * onsetSensitivity);
+          }
+          
+          // Update visual intensity:
+          // 1. If there's an onset, add it to current intensity (stacking for strong beats)
+          // 2. Always apply decay to create fade-out effect
+          if (onsetStrength > 0) {
+            // Add new onset to existing intensity (cap at 1.0)
+            visualIntensity = Math.min(1.0, visualIntensity + onsetStrength * 0.8);
+          }
+          
+          // Apply decay every frame
+          visualIntensity *= decayRate;
+          
+          // Minimum breathing level so it's never completely flat
+          visualIntensity = Math.max(0.12, visualIntensity);
+          
+          // Store current energy for next frame
+          previousEnergy = currentEnergy;
+          
+          // Use visualIntensity directly (no additional smoothing needed due to decay)
+          audioIntensity = visualIntensity;
         }
-        
-        // Calculate current frame energy (normalized 0-1)
-        const currentEnergy = lowSum / lowBinCount / 255;
-        
-        // ONSET DETECTION: Detect sudden energy increase (attack/beat)
-        const energyDelta = currentEnergy - previousEnergy;
-        let onsetStrength = 0;
-        
-        if (energyDelta > onsetThreshold) {
-          // Onset detected! Calculate strength based on how sharp the increase is
-          onsetStrength = Math.min(1, energyDelta * onsetSensitivity);
-        }
-        
-        // Update visual intensity:
-        // 1. If there's an onset, add it to current intensity (stacking for strong beats)
-        // 2. Always apply decay to create fade-out effect
-        if (onsetStrength > 0) {
-          // Add new onset to existing intensity (cap at 1.0)
-          visualIntensity = Math.min(1.0, visualIntensity + onsetStrength * 0.8);
-        }
-        
-        // Apply decay every frame
-        visualIntensity *= decayRate;
-        
-        // Minimum breathing level so it's never completely flat
-        visualIntensity = Math.max(0.12, visualIntensity);
-        
-        // Store current energy for next frame
-        previousEnergy = currentEnergy;
-        
-        // Use visualIntensity directly (no additional smoothing needed due to decay)
-        audioIntensity = visualIntensity;
       } else {
-        // Fallback: gentle breathing animation
-        const time = Date.now() / 1000;
-        audioIntensity = 0.12 + Math.sin(time * 1.5) * 0.05;
+        // Reset to gentle breathing when not playing
+        visualIntensity = 0.12;
+        previousEnergy = 0;
+        audioIntensity = 0.12;
       }
       
       // Less smoothing for more responsive pulse effect
@@ -915,8 +937,6 @@
       playBtn.style.borderColor = `rgba(${baseColor.join(',')}, ${0.5 + smoothedIntensity * 0.3})`;
       playBtn.style.opacity = opacity;
       progressRing.style.stroke = `rgb(${baseColor.join(',')})`;
-      
-      animationId = requestAnimationFrame(visualize);
     }
 
     // Pomodoro Timer Functions
@@ -946,6 +966,7 @@
       if (!pomodoroIsRunning) {
         pomodoroIsRunning = true;
         timerDisplay.classList.add('active');
+        startVisualizationLoop(); // Start visualization loop for progress ring
         pomodoroInterval = setInterval(() => {
           if (pomodoroTimeRemaining > 0) {
             pomodoroTimeRemaining--;
@@ -955,6 +976,9 @@
             completePomodoroSession();
           }
         }, 1000);
+        
+        // Auto-play music when pomodoro starts
+        startPlayback();
       }
     }
 
@@ -964,6 +988,10 @@
         timerDisplay.classList.remove('active');
         clearInterval(pomodoroInterval);
         pomodoroInterval = null;
+        stopVisualizationLoop(); // Stop visualization loop
+        
+        // Auto-pause music when pomodoro pauses
+        pausePlayback();
       }
     }
 
@@ -974,18 +1002,41 @@
     }
 
     function completePomodoroSession() {
-      pausePomodoro();
+      pausePlayback();
+      pomodoroIsRunning = false;
+      clearInterval(pomodoroInterval);
+      pomodoroInterval = null;
+      timerDisplay.classList.remove('active');
       
-      // Switch between work and break
-      pomodoroIsWorkSession = !pomodoroIsWorkSession;
-      pomodoroTimeRemaining = pomodoroIsWorkSession ? pomodoroWorkDuration : pomodoroBreakDuration;
+      // Show completion feedback
+      showCompletionFeedback();
       
-      updatePomodoroDisplay();
-      
-      // Optional: Play a gentle notification sound or vibration
+      // Vibrate if on mobile
       if (navigator.vibrate) {
         navigator.vibrate([100, 50, 100]);
       }
+    }
+
+    function showCompletionFeedback() {
+      // Save original content
+      const originalContent = timerDisplay.textContent;
+      
+      // Show checkmark
+      timerDisplay.textContent = '✓';
+      timerDisplay.style.fontSize = '24px';
+      timerDisplay.style.opacity = '1';
+      
+      // Restore after 2 seconds
+      setTimeout(() => {
+        timerDisplay.textContent = originalContent;
+        timerDisplay.style.fontSize = '';
+        timerDisplay.style.opacity = '';
+        
+        // Reset to work mode
+        pomodoroIsWorkSession = true;
+        pomodoroTimeRemaining = pomodoroWorkDuration;
+        updatePomodoroDisplay();
+      }, 2000);
     }
 
     function togglePomodoro() {
@@ -1037,11 +1088,8 @@
       clearTimeout(pomodoroLongPressTimer);
     });
 
-    timerDisplay.addEventListener('click', (e) => {
-      // Only toggle if it wasn't a long press
-      if (pomodoroIsLongPress) return;
-      togglePomodoro();
-    });
+    // Note: Timer display is now read-only. Use play button to control Pomodoro.
+    // Long press on timer still resets it.
 
     // Event Listeners
     playBtn.addEventListener('click', togglePlay);
@@ -1128,6 +1176,7 @@
     loadScene(getSceneByTime());
     resetHideTimer();
     updatePomodoroDisplay(); // Initialize Pomodoro timer display
+    startVisualizationLoop(); // Start visualization loop for Pomodoro progress ring
   </script>
 </body>
 </html>
