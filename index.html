@@ -506,9 +506,12 @@
       playBtn.className = 'play-button ' + scene.id + (isPlaying ? ' playing' : '');
       progressRing.className = 'progress-ring-fill ' + scene.id;
 
-      // Update background gradient based on scene
+      // Update background gradient based on scene - smooth transition
       if (bgGradient) {
-        bgGradient.className = 'bg-layer bg-gradient ' + scene.id;
+        // Remove old scene classes
+        bgGradient.classList.remove('begin', 'deep', 'flow', 'unwind');
+        // Add new scene class
+        bgGradient.classList.add(scene.id);
       }
 
       currentTrackIndex = 0;
@@ -571,10 +574,10 @@
       if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
         analyser = audioContext.createAnalyser();
-        analyser.fftSize = 1024; // Higher resolution for piano
-        analyser.smoothingTimeConstant = 0.6; // Less smoothing = more responsive
-        analyser.minDecibels = -120; // More sensitive to quiet sounds
-        analyser.maxDecibels = -20; // Better range for piano dynamics
+        analyser.fftSize = 256; // Standard resolution
+        analyser.smoothingTimeConstant = 0.8; // Some smoothing for stability
+        analyser.minDecibels = -90; // Standard range
+        analyser.maxDecibels = -10; // Standard range
         dataArray = new Uint8Array(analyser.frequencyBinCount);
       }
       
@@ -584,10 +587,15 @@
       
       // Connect analysis audio to analyser if not already connected
       if (analysisAudio && !sourceNode) {
-        sourceNode = audioContext.createMediaElementSource(analysisAudio);
-        sourceNode.connect(analyser);
-        // Don't connect to destination - we don't want to hear this audio
-        isAudioContextInitialized = true;
+        try {
+          sourceNode = audioContext.createMediaElementSource(analysisAudio);
+          sourceNode.connect(analyser);
+          // Don't connect to destination - we don't want to hear this audio
+          isAudioContextInitialized = true;
+          console.log('Audio context initialized successfully');
+        } catch (e) {
+          console.error('Failed to connect audio source:', e);
+        }
       }
     }
 
