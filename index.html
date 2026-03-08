@@ -590,7 +590,20 @@
       musicPreloaded = true;
 
       const allFiles = [];
-      scenes.forEach(scene => {
+
+      // Prioritize current scene's tracks
+      const currentScene = scenes[currentSceneIndex];
+      if (currentScene) {
+        currentScene.tracks.forEach(track => {
+          if (!allFiles.includes(track.file)) {
+            allFiles.push(track.file);
+          }
+        });
+      }
+
+      // Then queue the rest
+      scenes.forEach((scene, index) => {
+        if (index === currentSceneIndex) return; // Already loaded
         scene.tracks.forEach(track => {
           if (!allFiles.includes(track.file)) {
             allFiles.push(track.file);
@@ -598,6 +611,7 @@
         });
       });
 
+      // Start preloading in priority order
       allFiles.forEach(file => {
         preloadedSounds[file] = new Howl({
           src: [`music/${file}`],
