@@ -576,7 +576,7 @@
           analysisAudio.crossOrigin = 'anonymous';
           analysisAudio.src = analysisBlobUrl;
           analysisAudio.preload = 'auto';
-          analysisAudio.volume = 0;
+          analysisAudio.volume = 0.001; // Very low but not zero to prevent browser optimization
           analysisAudio.style.display = 'none';
           document.body.appendChild(analysisAudio);
           console.log('Analysis audio created with blob URL:', analysisBlobUrl);
