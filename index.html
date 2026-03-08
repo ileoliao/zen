@@ -393,7 +393,7 @@
 
     .timer-display.active {
       opacity: 0.6;
-      animation: timer-breathe 3s ease-in-out infinite;
+      animation: timer-breathe 5s ease-in-out infinite;
     }
 
     @keyframes timer-breathe {
@@ -987,7 +987,7 @@
         // Base intensity + sine wave oscillation
         // Oscillation range: -1 to 1. We scale it and add to a base value.
         // Base 0.3, Swing 0.15 = pulsates between 0.15 and 0.45
-        const breatheSpeed = 2.0; // Seconds per full breath cycle
+        const breatheSpeed = 4.0; // Seconds per full breath cycle
         const pulse = Math.sin(time * Math.PI * 2 / breatheSpeed);
 
         visualIntensity = 0.3 + (pulse * 0.15);
