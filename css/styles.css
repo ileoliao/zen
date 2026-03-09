@@ -1,0 +1,497 @@
+/* ===== CSS Variables ===== */
+:root {
+  --color-bg-dark: #0a0a0f;
+  --color-text: #fff;
+  --color-scene-begin: #f4c569;
+  --color-scene-deep: #7eb8e8;
+  --color-scene-flow: #e8b84a;
+  --color-scene-unwind: #c9846e;
+  --transition-speed: 0.4s;
+}
+
+/* ===== Reset & Base ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg-dark);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: var(--color-text);
+  touch-action: pan-y;
+}
+
+/* ===== Background Layers ===== */
+.bg-layer {
+  position: fixed;
+  top: -25%;
+  left: -25%;
+  width: 150%;
+  height: 150%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.bg-gradient {
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(232, 213, 183, 0.1) 0%, transparent 70%),
+    radial-gradient(ellipse at 80% 80%, rgba(168, 200, 236, 0.08) 0%, transparent 70%),
+    radial-gradient(ellipse at 50% 50%, rgba(15, 15, 20, 1) 0%, rgba(8, 8, 12, 1) 100%);
+  transition: all 2s ease;
+}
+
+/* Scene-specific gradients */
+.bg-gradient.begin {
+  background:
+    radial-gradient(ellipse at 20% 35%, rgba(255, 200, 100, 0.25) 0%, transparent 60%),
+    radial-gradient(ellipse at 45% 25%, rgba(255, 160, 120, 0.18) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 30%, rgba(200, 160, 200, 0.12) 0%, transparent 65%),
+    radial-gradient(ellipse at 50% 100%, rgba(40, 30, 35, 0.7) 0%, transparent 70%),
+    radial-gradient(ellipse at 50% 50%, rgba(25, 20, 22, 1) 0%, rgba(12, 10, 10, 1) 100%);
+}
+
+.bg-gradient.deep {
+  background:
+    radial-gradient(ellipse at 35% 45%, rgba(80, 140, 200, 0.22) 0%, transparent 65%),
+    radial-gradient(ellipse at 65% 65%, rgba(60, 100, 160, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse at 50% 80%, rgba(40, 80, 140, 0.1) 0%, transparent 70%),
+    radial-gradient(ellipse at 50% 50%, rgba(10, 15, 25, 1) 0%, rgba(6, 10, 18, 1) 100%);
+}
+
+.bg-gradient.flow {
+  background:
+    radial-gradient(ellipse at 40% 40%, rgba(232, 184, 74, 0.2) 0%, transparent 60%),
+    radial-gradient(ellipse at 60% 55%, rgba(200, 160, 80, 0.15) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 30%, rgba(220, 170, 90, 0.1) 0%, transparent 65%),
+    radial-gradient(ellipse at 50% 50%, rgba(28, 22, 18, 1) 0%, rgba(15, 12, 10, 1) 100%);
+}
+
+.bg-gradient.unwind {
+  background:
+    radial-gradient(ellipse at 45% 50%, rgba(180, 100, 80, 0.22) 0%, transparent 60%),
+    radial-gradient(ellipse at 55% 60%, rgba(160, 90, 70, 0.15) 0%, transparent 55%),
+    radial-gradient(ellipse at 30% 25%, rgba(140, 100, 120, 0.12) 0%, transparent 65%),
+    radial-gradient(ellipse at 50% 50%, rgba(22, 15, 18, 1) 0%, rgba(12, 10, 12, 1) 100%);
+}
+
+/* Noise texture overlay */
+.bg-noise {
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  background-size: 512px 512px;
+  background-repeat: repeat;
+}
+
+/* Aurora effect */
+.bg-aurora {
+  background:
+    radial-gradient(circle at 30% 50%, rgba(255, 255, 255, 0.02) 0%, transparent 50%),
+    radial-gradient(circle at 70% 50%, rgba(255, 255, 255, 0.015) 0%, transparent 50%);
+  background-size: 150% 150%;
+  animation: aurora 40s ease-in-out infinite;
+}
+
+@keyframes aurora {
+  0%, 100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  33% {
+    transform: translateX(0.5%) scale(1.005);
+    opacity: 0.8;
+  }
+  66% {
+    transform: translateX(-0.5%) scale(0.995);
+    opacity: 0.9;
+  }
+}
+
+/* Vignette overlay */
+.bg-vignette {
+  background: radial-gradient(circle at 50% 50%, transparent 0%, rgba(0, 0, 0, 0.4) 100%);
+}
+
+/* ===== Main App Layout ===== */
+.app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+/* ===== Scene Indicator ===== */
+.scene-indicator {
+  position: absolute;
+  top: 8vh;
+  text-align: center;
+  opacity: 0.9;
+  transition: opacity 0.8s ease;
+}
+
+.scene-indicator.hidden {
+  opacity: 0;
+}
+
+.scene-label {
+  font-size: 11px;
+  letter-spacing: 0.4em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 8px;
+}
+
+.scene-name {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 32px;
+  font-weight: 300;
+  letter-spacing: 0.15em;
+  transition: color 0.6s ease;
+}
+
+.scene-name.begin { color: var(--color-scene-begin); }
+.scene-name.deep { color: var(--color-scene-deep); }
+.scene-name.flow { color: var(--color-scene-flow); }
+.scene-name.unwind { color: var(--color-scene-unwind); }
+
+/* ===== Player Container ===== */
+.player-container {
+  position: relative;
+  width: 140px;
+  height: 140px;
+}
+
+/* Progress Ring */
+.progress-ring {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+
+.progress-ring-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 1;
+}
+
+.progress-ring-fill {
+  fill: none;
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-dasharray: 440;
+  stroke-dashoffset: 440;
+  transition: stroke-dashoffset 0.1s linear, stroke 0.6s ease;
+}
+
+/* Play Button */
+.play-button {
+  position: absolute;
+  inset: 20px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(20px);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  color: #fff;
+  box-shadow: none;
+  outline: none;
+}
+
+.play-button:active {
+  transform: scale(0.96);
+}
+
+.play-button.playing {
+  transition: transform 0.1s ease-out, box-shadow 0.1s ease-out, border-color 0.3s ease;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  outline: none;
+}
+
+@media (hover: hover) {
+  .play-button:hover {
+    background: rgba(255, 255, 255, 0.06);
+    transform: scale(1.02);
+  }
+
+  .play-button.playing:hover {
+    background: transparent;
+    transform: scale(1);
+  }
+}
+
+.play-button.loading {
+  cursor: wait;
+}
+
+.play-button.loading .play-icon {
+  opacity: 0.3;
+  animation: pulse-loading 1s ease-in-out infinite;
+}
+
+@keyframes pulse-loading {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.7; }
+}
+
+.play-icon {
+  width: 32px;
+  height: 32px;
+  fill: #fff;
+  opacity: 0.9;
+  transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.play-button.playing .play-icon {
+  opacity: 0.04;
+}
+
+.play-button.playing:hover .play-icon {
+  opacity: 0.25;
+}
+
+/* ===== Track Info ===== */
+.track-info {
+  position: absolute;
+  bottom: 8vh;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+}
+
+.track-info.visible {
+  opacity: 0.7;
+}
+
+.track-name {
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.track-artist {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.1em;
+}
+
+/* Track switch animation */
+.track-info.switching-up {
+  animation: trackSlideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.track-info.switching-down {
+  animation: trackSlideDown 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes trackSlideUp {
+  0% { transform: translateY(0); opacity: 0.7; }
+  100% { transform: translateY(-30px); opacity: 0; }
+}
+
+@keyframes trackSlideDown {
+  0% { transform: translateY(0); opacity: 0.7; }
+  100% { transform: translateY(30px); opacity: 0; }
+}
+
+/* Track preview cards */
+.track-preview {
+  position: absolute;
+  bottom: 8vh;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.track-preview.visible {
+  opacity: 0.3;
+}
+
+.track-preview.up {
+  transform: translateX(-50%) translateY(40px);
+}
+
+.track-preview.down {
+  transform: translateX(-50%) translateY(-40px);
+}
+
+/* Bounce animation */
+@keyframes bounceUp {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes bounceDown {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(8px); }
+}
+
+.track-info.bounce-up {
+  animation: bounceUp 0.3s ease;
+}
+
+.track-info.bounce-down {
+  animation: bounceDown 0.3s ease;
+}
+
+/* ===== Boundary Hint ===== */
+.boundary-hint {
+  position: absolute;
+  bottom: calc(8vh + 50px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.1em;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.boundary-hint.visible {
+  opacity: 1;
+}
+
+/* ===== Swipe Hint ===== */
+.swipe-hint {
+  position: absolute;
+  bottom: 4vh;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.15);
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.swipe-hint.visible {
+  opacity: 1;
+}
+
+/* ===== Volume Overlay ===== */
+.volume-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(10px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+
+.volume-overlay.active {
+  opacity: 1;
+  pointer-events: all;
+}
+
+.volume-slider-vertical {
+  width: 4px;
+  height: 200px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  position: relative;
+  cursor: pointer;
+}
+
+.volume-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #fff;
+  border-radius: 2px;
+  transition: height 0.1s ease;
+}
+
+.volume-label {
+  margin-top: 24px;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+}
+
+/* ===== Timer Display ===== */
+.timer-display {
+  position: absolute;
+  bottom: -56px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 28px;
+  font-weight: 400;
+  letter-spacing: 0.15em;
+  color: rgba(255, 255, 255, 0.25);
+  font-variant-numeric: tabular-nums;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', monospace;
+  opacity: 0.35;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.timer-display:hover {
+  opacity: 0.7;
+  letter-spacing: 0.25em;
+}
+
+.timer-display.active {
+  opacity: 0.6;
+  animation: timer-breathe 5s ease-in-out infinite;
+}
+
+@keyframes timer-breathe {
+  0%, 100% {
+    opacity: 0.5;
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    opacity: 0.75;
+    transform: translateX(-50%) translateY(-2px);
+  }
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 480px) {
+  .timer-display {
+    bottom: -44px;
+    font-size: 22px;
+    letter-spacing: 0.18em;
+  }
+}
+
+@media (max-height: 400px) {
+  .timer-display {
+    display: none;
+  }
+}
