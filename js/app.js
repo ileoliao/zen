@@ -76,7 +76,6 @@
     // Track switching variables
     let isTrackSwitching = false;
     let touchCurrentY = 0;
-    const GESTURE_CONFIG.trackSwitchThreshold = 80;
 
     // New DOM elements for track switching
     const trackPreviewUp = document.getElementById('trackPreviewUp');
