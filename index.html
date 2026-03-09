@@ -325,6 +325,98 @@
       letter-spacing: 0.1em;
     }
 
+    /* Track switch animation */
+    .track-info.switching-up {
+      animation: trackSlideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    .track-info.switching-down {
+      animation: trackSlideDown 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+
+    @keyframes trackSlideUp {
+      0% {
+        transform: translateY(0);
+        opacity: 0.7;
+      }
+      100% {
+        transform: translateY(-30px);
+        opacity: 0;
+      }
+    }
+
+    @keyframes trackSlideDown {
+      0% {
+        transform: translateY(0);
+        opacity: 0.7;
+      }
+      100% {
+        transform: translateY(30px);
+        opacity: 0;
+      }
+    }
+
+    /* Track preview cards during swipe */
+    .track-preview {
+      position: absolute;
+      bottom: 8vh;
+      left: 50%;
+      transform: translateX(-50%);
+      text-align: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .track-preview.visible {
+      opacity: 0.3;
+    }
+
+    .track-preview.up {
+      transform: translateX(-50%) translateY(40px);
+    }
+
+    .track-preview.down {
+      transform: translateX(-50%) translateY(-40px);
+    }
+
+    /* Bounce animation for boundary feedback */
+    @keyframes bounceUp {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+
+    @keyframes bounceDown {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(8px); }
+    }
+
+    .track-info.bounce-up {
+      animation: bounceUp 0.3s ease;
+    }
+
+    .track-info.bounce-down {
+      animation: bounceDown 0.3s ease;
+    }
+
+    /* Boundary hint */
+    .boundary-hint {
+      position: absolute;
+      bottom: calc(8vh + 50px);
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      color: rgba(255, 255, 255, 0.4);
+      letter-spacing: 0.1em;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .boundary-hint.visible {
+      opacity: 1;
+    }
+
     .swipe-hint {
       position: absolute;
       bottom: 4vh;
@@ -483,7 +575,18 @@
       <div class="track-artist" id="trackArtist">Piano Ambient</div>
     </div>
 
-    <div class="swipe-hint" id="swipeHint">Swipe to change</div>
+    <!-- Track preview cards during swipe -->
+    <div class="track-preview up" id="trackPreviewUp">
+      <div class="track-name" id="previewNameUp">Next Track</div>
+    </div>
+    <div class="track-preview down" id="trackPreviewDown">
+      <div class="track-name" id="previewNameDown">Prev Track</div>
+    </div>
+
+    <!-- Boundary hint -->
+    <div class="boundary-hint" id="boundaryHint"></div>
+
+    <div class="swipe-hint" id="swipeHint">Swipe left/right for scenes, up/down for tracks</div>
 
     <div class="volume-overlay" id="volumeOverlay">
       <div class="volume-slider-vertical" id="volumeSlider">
@@ -519,7 +622,6 @@
           { title: 'Flow Guitar', artist: 'Harbor Zen', file: 'Harbor Zen - Guitar 2.mp3' },
           { title: 'Nature Sounds 1', artist: 'Harbor Zen', file: 'nature1.mp3' },
           { title: 'Nature Sounds 2', artist: 'Harbor Zen', file: 'nature2.mp3' },
-          { title: 'Nature Sounds 3', artist: 'Harbor Zen', file: 'nature3.mp3' },
           { title: 'Rain Ambient', artist: 'Harbor Zen', file: 'rain1.mp3' },
           { title: 'World Music 1', artist: 'Harbor Zen', file: 'world1.mp3' },
           { title: 'World Music 2', artist: 'Harbor Zen', file: 'world2.mp3' }
@@ -534,7 +636,6 @@
           { title: 'Afternoon Piano', artist: 'Harbor Zen', file: 'Harbor Zen - Piano 3.mp3' },
           { title: 'Nature Sounds 1', artist: 'Harbor Zen', file: 'nature1.mp3' },
           { title: 'Nature Sounds 2', artist: 'Harbor Zen', file: 'nature2.mp3' },
-          { title: 'Nature Sounds 3', artist: 'Harbor Zen', file: 'nature3.mp3' },
           { title: 'Rain Ambient', artist: 'Harbor Zen', file: 'rain1.mp3' },
           { title: 'World Music 1', artist: 'Harbor Zen', file: 'world1.mp3' },
           { title: 'World Music 2', artist: 'Harbor Zen', file: 'world2.mp3' }
@@ -604,6 +705,18 @@
     let touchStartY = 0;
     let touchStartTime = 0;
     let longPressTimer;
+
+    // Track switching variables
+    let isTrackSwitching = false;
+    let touchCurrentY = 0;
+    const TRACK_SWITCH_THRESHOLD = 80;
+
+    // New DOM elements for track switching
+    const trackPreviewUp = document.getElementById('trackPreviewUp');
+    const trackPreviewDown = document.getElementById('trackPreviewDown');
+    const previewNameUp = document.getElementById('previewNameUp');
+    const previewNameDown = document.getElementById('previewNameDown');
+    const boundaryHint = document.getElementById('boundaryHint');
 
     // Mobile detection for iOS
     // iOS Safari has extremely strict Web Audio API policies that often cause silent playback
@@ -848,6 +961,98 @@
       }
     }
 
+    // Track switching functions
+    function nextTrack() {
+      const scene = scenes[currentSceneIndex];
+      const totalTracks = scene.tracks.length;
+      
+      if (currentTrackIndex < totalTracks - 1) {
+        // Animate out
+        trackInfo.classList.add('switching-up');
+        
+        setTimeout(() => {
+          currentTrackIndex++;
+          loadTrack();
+          
+          // Reset animation
+          trackInfo.classList.remove('switching-up');
+          
+          // Auto-play if timer is running
+          if (pomodoroIsRunning) {
+            startPlayback();
+          }
+        }, 350);
+      } else {
+        // Boundary feedback
+        showBoundaryHint('last');
+        trackInfo.classList.add('bounce-up');
+        setTimeout(() => trackInfo.classList.remove('bounce-up'), 300);
+      }
+    }
+
+    function prevTrack() {
+      if (currentTrackIndex > 0) {
+        // Animate out
+        trackInfo.classList.add('switching-down');
+        
+        setTimeout(() => {
+          currentTrackIndex--;
+          loadTrack();
+          
+          // Reset animation
+          trackInfo.classList.remove('switching-down');
+          
+          // Auto-play if timer is running
+          if (pomodoroIsRunning) {
+            startPlayback();
+          }
+        }, 350);
+      } else {
+        // Boundary feedback
+        showBoundaryHint('first');
+        trackInfo.classList.add('bounce-down');
+        setTimeout(() => trackInfo.classList.remove('bounce-down'), 300);
+      }
+    }
+
+    function updateTrackPreview(direction) {
+      const scene = scenes[currentSceneIndex];
+      const totalTracks = scene.tracks.length;
+      
+      if (direction === 'up') {
+        if (currentTrackIndex < totalTracks - 1) {
+          previewNameUp.textContent = scene.tracks[currentTrackIndex + 1].title;
+          trackPreviewUp.classList.add('visible');
+        } else {
+          trackPreviewUp.classList.remove('visible');
+        }
+        trackPreviewDown.classList.remove('visible');
+      } else if (direction === 'down') {
+        if (currentTrackIndex > 0) {
+          previewNameDown.textContent = scene.tracks[currentTrackIndex - 1].title;
+          trackPreviewDown.classList.add('visible');
+        } else {
+          trackPreviewDown.classList.remove('visible');
+        }
+        trackPreviewUp.classList.remove('visible');
+      }
+    }
+
+    function hideTrackPreview() {
+      trackPreviewUp.classList.remove('visible');
+      trackPreviewDown.classList.remove('visible');
+    }
+
+    function showBoundaryHint(position) {
+      if (position === 'first') {
+        boundaryHint.textContent = 'First track';
+      } else {
+        boundaryHint.textContent = 'Last track';
+      }
+      boundaryHint.classList.add('visible');
+      setTimeout(() => boundaryHint.classList.remove('visible'), 1500);
+    }
+
     function togglePlay() {
       if (playBtn.classList.contains('loading')) return;
 
@@ -1019,6 +1224,7 @@
       sceneIndicator.classList.add('hidden');
       trackInfo.classList.remove('visible');
       swipeHint.classList.remove('visible');
+      hideTrackPreview();
     }
 
     function resetHideTimer() {
@@ -1311,11 +1517,13 @@
     // Event Listeners
     playBtn.addEventListener('click', togglePlay);
 
-    // Touch events
+    // Touch events - support both horizontal (scene) and vertical (track) swipes
     document.addEventListener('touchstart', (e) => {
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
+      touchCurrentY = touchStartY;
       touchStartTime = Date.now();
+      isTrackSwitching = false;
 
       longPressTimer = setTimeout(() => {
         volumeOverlay.classList.add('active');
@@ -1324,10 +1532,45 @@
 
     document.addEventListener('touchmove', (e) => {
       clearTimeout(longPressTimer);
+
+      if (volumeOverlay.classList.contains('active')) return;
+
+      const currentY = e.touches[0].clientY;
+      const diffY = touchStartY - currentY;
+
+      // Check if this is a vertical swipe
+      if (Math.abs(diffY) > 20 && !isTrackSwitching) {
+        isTrackSwitching = true;
+      }
+
+      // Show preview during vertical swipe
+      if (isTrackSwitching) {
+        touchCurrentY = currentY;
+        const cumulativeDiffY = touchStartY - currentY;
+
+        if (cumulativeDiffY > 30) {
+          // Swiping up - show next track preview
+          updateTrackPreview('up');
+          // Add slight visual feedback to current track
+          trackInfo.style.transform = `translateY(${-cumulativeDiffY * 0.3}px)`;
+          trackInfo.style.opacity = Math.max(0.3, 0.7 - cumulativeDiffY / 200);
+        } else if (cumulativeDiffY < -30) {
+          // Swiping down - show prev track preview
+          updateTrackPreview('down');
+          // Add slight visual feedback to current track
+          trackInfo.style.transform = `translateY(${-cumulativeDiffY * 0.3}px)`;
+          trackInfo.style.opacity = Math.max(0.3, 0.7 + cumulativeDiffY / 200);
+        }
+      }
     }, { passive: true });
 
     document.addEventListener('touchend', (e) => {
       clearTimeout(longPressTimer);
+
+      // Reset track info transform
+      trackInfo.style.transform = '';
+      trackInfo.style.opacity = '';
+      hideTrackPreview();
 
       if (volumeOverlay.classList.contains('active')) {
         setTimeout(() => volumeOverlay.classList.remove('active'), 1500);
@@ -1335,19 +1578,35 @@
       }
 
       const touchEndX = e.changedTouches[0].clientX;
+      const touchEndY = e.changedTouches[0].clientY;
       const diffX = touchStartX - touchEndX;
+      const diffY = touchStartY - touchEndY;
       const duration = Date.now() - touchStartTime;
 
-      if (Math.abs(diffX) > 50) {
+      // Determine swipe type
+      const isHorizontalSwipe = Math.abs(diffX) > Math.abs(diffY);
+
+      if (isTrackSwitching && Math.abs(diffY) > TRACK_SWITCH_THRESHOLD) {
+        // Vertical swipe - switch tracks
+        if (diffY > 0) {
+          nextTrack(); // Swipe up = next track
+        } else {
+          prevTrack(); // Swipe down = prev track
+        }
+        showUI();
+      } else if (isHorizontalSwipe && Math.abs(diffX) > 50) {
+        // Horizontal swipe - switch scenes
         if (diffX > 0) {
           nextScene();
         } else {
           prevScene();
         }
-      } else if (Math.abs(diffX) < 30) {
-        // Any tap/click (not swipe) shows UI, regardless of duration
+      } else if (Math.abs(diffX) < 30 && Math.abs(diffY) < 30) {
+        // Tap - show UI
         showUI();
       }
+
+      isTrackSwitching = false;
     }, { passive: true });
 
     // Volume control
@@ -1389,6 +1648,12 @@
         nextScene();
       } else if (e.code === 'ArrowLeft') {
         prevScene();
+      } else if (e.code === 'ArrowUp') {
+        e.preventDefault();
+        prevTrack();
+      } else if (e.code === 'ArrowDown') {
+        e.preventDefault();
+        nextTrack();
       }
     });
 
