@@ -1,4 +1,27 @@
 
+    // State variables
+    let currentSceneIndex = 0;
+    let currentTrackIndex = 0;
+    let isPlaying = false;
+    let currentHowl = null;
+    let smoothedIntensity = 0;
+    let smoothedScale = 1;
+    let animationId = null;
+
+    // Audio analysis
+    let analyser = null;
+    let dataArray = null;
+    let bassHistory = [];
+    let previousEnergy = 0;
+    let visualIntensity = 0;
+
+    // Pomodoro state
+    let pomodoroTimeRemaining = POMODORO_CONFIG.workDuration;
+    let pomodoroIsRunning = false;
+    let pomodoroInterval = null;
+    let pomodoroIsWorkSession = true;
+
+    const iosAudioPlayer = document.getElementById('iosAudioPlayer');
 
     const sceneIndicator = document.getElementById('sceneIndicator');
     const sceneName = document.getElementById('sceneName');
@@ -245,10 +268,10 @@
 
       if (!analyser && Howler.ctx) {
         analyser = Howler.ctx.createAnalyser();
-        analyser.fftSize = 256;
-        analyser.smoothingTimeConstant = 0.92;
-        analyser.minDecibels = -90;
-        analyser.maxDecibels = -10;
+        analyser.fftSize = AUDIO_CONFIG.fftSize;
+        analyser.smoothingTimeConstant = AUDIO_CONFIG.smoothingTimeConstant;
+        analyser.minDecibels = AUDIO_CONFIG.minDecibels;
+        analyser.maxDecibels = AUDIO_CONFIG.maxDecibels;
         dataArray = new Uint8Array(analyser.frequencyBinCount);
       }
 
@@ -542,7 +565,7 @@
 
     function resetHideTimer() {
       clearTimeout(hideTimeout);
-      hideTimeout = setTimeout(hideUI, 4000);
+      hideTimeout = setTimeout(hideUI, GESTURE_CONFIG.uiHideDelay);
     }
 
     function updateProgress() {
@@ -652,13 +675,8 @@
       const targetScale = baseScale + smoothedIntensity * (maxScale - baseScale);
       smoothedScale = smoothedScale + (targetScale - smoothedScale) * 0.15;
 
-      // Get scene color
-      const baseColor = {
-        begin: [244, 197, 105],  // 朝阳金橙色
-        deep: [126, 184, 232],   // 深海蓝
-        flow: [232, 184, 74],    // 琥珀金
-        unwind: [201, 132, 110]  // 日落红
-      }[SCENES[currentSceneIndex].id] || [168, 200, 236];
+      // Get scene color from config
+      const baseColor = SCENE_COLORS[SCENES[currentSceneIndex].id] || [168, 200, 236];
 
       // Dynamic opacity based on intensity
       const opacity = 0.8 + smoothedIntensity * 0.15;
@@ -687,14 +705,9 @@
     function updatePomodoroDisplay() {
       timerDisplay.textContent = formatTime(pomodoroTimeRemaining);
 
-      // Set scene-specific color
-      const sceneColors = {
-        begin: 'rgba(244, 197, 105, ',
-        deep: 'rgba(126, 184, 232, ',
-        flow: 'rgba(232, 184, 74, ',
-        unwind: 'rgba(201, 132, 110, '
-      };
-      const baseColor = sceneColors[SCENES[currentSceneIndex].id] || 'rgba(255, 255, 255, ';
+      // Set scene-specific color from config
+      const baseColorRGB = SCENE_COLORS[SCENES[currentSceneIndex].id] || [255, 255, 255];
+      const baseColor = `rgba(${baseColorRGB.join(',')}, `;
       timerDisplay.style.color = baseColor + '0.35)';
     }
 
@@ -798,7 +811,7 @@
         setTimeout(() => {
           timerDisplay.style.opacity = '';
         }, 200);
-      }, 800);
+      }, POMODORO_CONFIG.longPressDelay);
     });
 
     timerDisplay.addEventListener('mouseup', () => {
@@ -817,7 +830,7 @@
         pomodoroIsLongPress = true;
         resetPomodoro();
         if (navigator.vibrate) navigator.vibrate(50);
-      }, 800);
+      }, POMODORO_CONFIG.longPressDelay);
     }, { passive: false });
 
     timerDisplay.addEventListener('touchend', () => {
@@ -840,7 +853,7 @@
 
       longPressTimer = setTimeout(() => {
         volumeOverlay.classList.add('active');
-      }, 600);
+      }, GESTURE_CONFIG.longPressDelay);
     }, { passive: true });
 
     document.addEventListener('touchmove', (e) => {
@@ -907,7 +920,7 @@
           prevTrack(); // Swipe down = prev track
         }
         showUI();
-      } else if (isHorizontalSwipe && Math.abs(diffX) > 50) {
+      } else if (isHorizontalSwipe && Math.abs(diffX) > GESTURE_CONFIG.sceneSwitchThreshold) {
         // Horizontal swipe - switch scenes
         if (diffX > 0) {
           nextScene();
