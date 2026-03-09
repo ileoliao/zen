@@ -53,38 +53,6 @@
       }
     ];
 
-    let currentSceneIndex = 0;
-    let currentTrackIndex = 0;
-    let isPlaying = false;
-    let currentHowl = null;
-    let smoothedIntensity = 0;
-    let smoothedScale = 1;
-    let animationId = null;
-
-    // Single audio source using Howler with Web Audio API
-    let analyser = null;
-    let dataArray = null;
-
-    // Beat detection variables
-    let bassHistory = [];
-    const bassHistorySize = 12; // Longer history for better trend detection
-    // Thresholds are now defined in the visualize function
-
-    // Onset detection variables
-    let previousEnergy = 0;
-    let visualIntensity = 0; // Current visual intensity with decay
-    const decayRate = 0.96; // Slower decay for more visible pulse
-    const onsetThreshold = 0.002; // Much lower threshold for piano
-    const onsetSensitivity = 8.0; // Higher sensitivity
-
-    // Pomodoro Timer variables
-    let pomodoroTimeRemaining = 25 * 60; // 25 minutes in seconds
-    let pomodoroIsRunning = false;
-    let pomodoroInterval = null;
-    const pomodoroWorkDuration = 25 * 60;
-    const pomodoroBreakDuration = 5 * 60;
-    let pomodoroIsWorkSession = true;
-
     const sceneIndicator = document.getElementById('sceneIndicator');
     const sceneName = document.getElementById('sceneName');
     const playBtn = document.getElementById('playBtn');
@@ -108,7 +76,7 @@
     // Track switching variables
     let isTrackSwitching = false;
     let touchCurrentY = 0;
-    const TRACK_SWITCH_THRESHOLD = 80;
+    const GESTURE_CONFIG.trackSwitchThreshold = 80;
 
     // New DOM elements for track switching
     const trackPreviewUp = document.getElementById('trackPreviewUp');
@@ -157,7 +125,7 @@
         }
       });
 
-      iosAudioPlayer.volume = 0.8;
+      iosAudioPlayer.volume = DEFAULT_VOLUME;
     }
 
     // Preload all audio using Howler
@@ -171,7 +139,7 @@
       const allFiles = [];
 
       // Prioritize current scene's tracks
-      const currentScene = scenes[currentSceneIndex];
+      const currentScene = SCENES[currentSceneIndex];
       if (currentScene) {
         currentScene.tracks.forEach(track => {
           if (!allFiles.includes(track.file)) {
@@ -181,7 +149,7 @@
       }
 
       // Then queue the rest
-      scenes.forEach((scene, index) => {
+      SCENES.forEach((scene, index) => {
         if (index === currentSceneIndex) return; // Already loaded
         scene.tracks.forEach(track => {
           if (!allFiles.includes(track.file)) {
@@ -208,7 +176,7 @@
           src: [`music/${file}`],
           html5: false, // Desktop uses Web Audio API
           preload: true,
-          volume: 0.8,
+          volume: DEFAULT_VOLUME,
 
           onloaderror: function (id, err) {
             console.error(`Failed to load ${file}:`, err);
@@ -219,13 +187,13 @@
 
     function getSceneByTime() {
       const hour = new Date().getHours();
-      const index = scenes.findIndex(s => hour >= s.startHour && hour < s.endHour);
+      const index = SCENES.findIndex(s => hour >= s.startHour && hour < s.endHour);
       return index !== -1 ? index : 3;
     }
 
     function loadScene(index) {
       currentSceneIndex = index;
-      const scene = scenes[index];
+      const scene = SCENES[index];
 
       sceneName.textContent = scene.name;
       sceneName.className = 'scene-name ' + scene.id;
@@ -253,7 +221,7 @@
     }
 
     function loadTrack() {
-      const scene = scenes[currentSceneIndex];
+      const scene = SCENES[currentSceneIndex];
       const track = scene.tracks[currentTrackIndex];
 
       trackName.textContent = track.title;
@@ -298,7 +266,7 @@
     // Create Howl on demand (only called during user interaction)
     function ensureCurrentHowl() {
       if (isIOS || currentHowl) return;
-      const scene = scenes[currentSceneIndex];
+      const scene = SCENES[currentSceneIndex];
       const track = scene.tracks[currentTrackIndex];
       const file = track.file;
 
@@ -308,7 +276,7 @@
         currentHowl = new Howl({
           src: [`music/${file}`],
           html5: false,
-          volume: 0.8
+          volume: DEFAULT_VOLUME
         });
       }
 
@@ -326,7 +294,7 @@
 
       // Force create Howler's AudioContext if it doesn't exist yet
       if (!Howler.ctx) {
-        Howler.volume(0.8);
+        Howler.volume(DEFAULT_VOLUME);
       }
 
       if (!analyser && Howler.ctx) {
@@ -353,7 +321,7 @@
     }
 
     function onTrackEnd() {
-      currentTrackIndex = (currentTrackIndex + 1) % scenes[currentSceneIndex].tracks.length;
+      currentTrackIndex = (currentTrackIndex + 1) % SCENES[currentSceneIndex].tracks.length;
       loadTrack();
       if (isPlaying) {
         startPlayback();
@@ -362,7 +330,7 @@
 
     // Track switching functions
     function nextTrack() {
-      const scene = scenes[currentSceneIndex];
+      const scene = SCENES[currentSceneIndex];
       const totalTracks = scene.tracks.length;
       
       if (currentTrackIndex < totalTracks - 1) {
@@ -415,7 +383,7 @@
     }
 
     function updateTrackPreview(direction) {
-      const scene = scenes[currentSceneIndex];
+      const scene = SCENES[currentSceneIndex];
       const totalTracks = scene.tracks.length;
       
       if (direction === 'up') {
@@ -470,7 +438,7 @@
       // 1. Desktop: Web Audio Context Resurrection
       if (!isIOS) {
         if (!Howler.ctx) {
-          Howler.volume(0.8);
+          Howler.volume(DEFAULT_VOLUME);
         }
         if (Howler.ctx && Howler.ctx.state === 'suspended') {
           Howler.ctx.resume().catch(e => console.warn('Failed to resume AudioContext:', e));
@@ -596,13 +564,13 @@
     }
 
     function nextScene() {
-      loadScene((currentSceneIndex + 1) % scenes.length);
+      loadScene((currentSceneIndex + 1) % SCENES.length);
       play();
       showUI();
     }
 
     function prevScene() {
-      loadScene((currentSceneIndex - 1 + scenes.length) % scenes.length);
+      loadScene((currentSceneIndex - 1 + SCENES.length) % SCENES.length);
       play();
       showUI();
     }
@@ -640,7 +608,7 @@
         progressRing.style.strokeDashoffset = circumference;
         return;
       }
-      const totalDuration = pomodoroIsWorkSession ? pomodoroWorkDuration : pomodoroBreakDuration;
+      const totalDuration = pomodoroIsWorkSession ? POMODORO_CONFIG.workDuration : POMODORO_CONFIG.breakDuration;
       const elapsed = totalDuration - pomodoroTimeRemaining;
       const progress = elapsed / totalDuration;
       const offset = circumference - (progress * circumference);
@@ -683,9 +651,9 @@
           const energyDelta = currentEnergy - previousEnergy;
           let onsetStrength = 0;
 
-          if (energyDelta > onsetThreshold) {
+          if (energyDelta > AUDIO_CONFIG.onsetThreshold) {
             // Onset detected! Calculate strength based on how sharp the increase is
-            onsetStrength = Math.min(1, energyDelta * onsetSensitivity);
+            onsetStrength = Math.min(1, energyDelta * AUDIO_CONFIG.onsetSensitivity);
           }
 
           // Update visual intensity:
@@ -697,7 +665,7 @@
           }
 
           // Apply decay every frame
-          visualIntensity *= decayRate;
+          visualIntensity *= AUDIO_CONFIG.decayRate;
 
           // Minimum breathing level so it's never completely flat
           visualIntensity = Math.max(0.12, visualIntensity);
@@ -744,7 +712,7 @@
         deep: [126, 184, 232],   // 深海蓝
         flow: [232, 184, 74],    // 琥珀金
         unwind: [201, 132, 110]  // 日落红
-      }[scenes[currentSceneIndex].id] || [168, 200, 236];
+      }[SCENES[currentSceneIndex].id] || [168, 200, 236];
 
       // Dynamic opacity based on intensity
       const opacity = 0.8 + smoothedIntensity * 0.15;
@@ -780,7 +748,7 @@
         flow: 'rgba(232, 184, 74, ',
         unwind: 'rgba(201, 132, 110, '
       };
-      const baseColor = sceneColors[scenes[currentSceneIndex].id] || 'rgba(255, 255, 255, ';
+      const baseColor = sceneColors[SCENES[currentSceneIndex].id] || 'rgba(255, 255, 255, ';
       timerDisplay.style.color = baseColor + '0.35)';
     }
 
@@ -819,7 +787,7 @@
 
     function resetPomodoro() {
       pausePomodoro();
-      pomodoroTimeRemaining = pomodoroIsWorkSession ? pomodoroWorkDuration : pomodoroBreakDuration;
+      pomodoroTimeRemaining = pomodoroIsWorkSession ? POMODORO_CONFIG.workDuration : POMODORO_CONFIG.breakDuration;
       updatePomodoroDisplay();
     }
 
@@ -856,7 +824,7 @@
 
         // Reset to work mode
         pomodoroIsWorkSession = true;
-        pomodoroTimeRemaining = pomodoroWorkDuration;
+        pomodoroTimeRemaining = POMODORO_CONFIG.workDuration;
         updatePomodoroDisplay();
       }, 2000);
     }
@@ -985,7 +953,7 @@
       // Determine swipe type
       const isHorizontalSwipe = Math.abs(diffX) > Math.abs(diffY);
 
-      if (isTrackSwitching && Math.abs(diffY) > TRACK_SWITCH_THRESHOLD) {
+      if (isTrackSwitching && Math.abs(diffY) > GESTURE_CONFIG.trackSwitchThreshold) {
         // Vertical swipe - switch tracks
         if (diffY > 0) {
           nextTrack(); // Swipe up = next track
@@ -1076,7 +1044,7 @@
       audioUnlocked = true;
 
       // Force Howler to create AudioContext synchronously in user gesture
-      Howler.volume(0.8);
+      Howler.volume(DEFAULT_VOLUME);
 
       // Resume synchronously - don't await
       if (Howler.ctx && Howler.ctx.state === 'suspended') {
