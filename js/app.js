@@ -33,8 +33,6 @@
     const trackName = document.getElementById('trackName');
     const trackArtist = document.getElementById('trackArtist');
     const swipeHint = document.getElementById('swipeHint');
-    const volumeOverlay = document.getElementById('volumeOverlay');
-    const volumeFill = document.getElementById('volumeFill');
     const bgGradient = document.getElementById('bgGradient');
     const loadingIndicator = document.getElementById('loadingIndicator');
 
@@ -916,16 +914,10 @@
       touchCurrentY = touchStartY;
       touchStartTime = Date.now();
       isTrackSwitching = false;
-
-      longPressTimer = setTimeout(() => {
-        volumeOverlay.classList.add('active');
-      }, GESTURE_CONFIG.longPressDelay);
     }, { passive: true });
 
     document.addEventListener('touchmove', (e) => {
       clearTimeout(longPressTimer);
-
-      if (volumeOverlay.classList.contains('active')) return;
 
       const currentY = e.touches[0].clientY;
       const diffY = touchStartY - currentY;
@@ -970,11 +962,6 @@
       trackInfo.style.opacity = '';
       hideTrackPreview();
 
-      if (volumeOverlay.classList.contains('active')) {
-        setTimeout(() => volumeOverlay.classList.remove('active'), 1500);
-        return;
-      }
-
       const touchEndX = e.changedTouches[0].clientX;
       const touchEndY = e.changedTouches[0].clientY;
       const diffX = touchStartX - touchEndX;
@@ -1005,29 +992,6 @@
       }
 
       isTrackSwitching = false;
-    }, { passive: true });
-
-    // Volume control
-    function setVolumeFromTouch(clientY) {
-      const rect = document.getElementById('volumeSlider').getBoundingClientRect();
-      const percent = 1 - ((clientY - rect.top) / rect.height);
-      const volume = Math.max(0, Math.min(1, percent));
-
-      if (isIOS) {
-        iosAudioPlayer.volume = volume;
-      } else if (currentHowl) {
-        currentHowl.volume(volume);
-      }
-
-      volumeFill.style.height = (volume * 100) + '%';
-    }
-
-    volumeOverlay.addEventListener('touchstart', (e) => {
-      setVolumeFromTouch(e.touches[0].clientY);
-    }, { passive: true });
-
-    volumeOverlay.addEventListener('touchmove', (e) => {
-      setVolumeFromTouch(e.touches[0].clientY);
     }, { passive: true });
 
     // Mouse click to show UI (exclude play button)

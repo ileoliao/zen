@@ -462,53 +462,6 @@ body {
   }
 }
 
-/* ===== Volume Overlay ===== */
-.volume-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(10px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.4s ease;
-}
-
-.volume-overlay.active {
-  opacity: 1;
-  pointer-events: all;
-}
-
-.volume-slider-vertical {
-  width: 4px;
-  height: 200px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  position: relative;
-  cursor: pointer;
-}
-
-.volume-fill {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: #fff;
-  border-radius: 2px;
-  transition: height 0.1s ease;
-}
-
-.volume-label {
-  margin-top: 24px;
-  font-size: 11px;
-  letter-spacing: 0.2em;
-  color: rgba(255, 255, 255, 0.5);
-  text-transform: uppercase;
-}
-
 /* ===== Timer Display ===== */
 .timer-display {
   position: absolute;
