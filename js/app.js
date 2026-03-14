@@ -366,6 +366,9 @@
       const scene = SCENES[currentSceneIndex];
       const totalTracks = scene.tracks.length;
       
+      // Hide any visible track preview first
+      hideTrackPreview();
+      
       // Loop: last track's next is first track
       const nextIndex = (currentTrackIndex + 1) % totalTracks;
       
@@ -389,6 +392,9 @@
     function prevTrack() {
       const scene = SCENES[currentSceneIndex];
       const totalTracks = scene.tracks.length;
+
+      // Hide any visible track preview first
+      hideTrackPreview();
 
       // Loop: first track's prev is last track
       const prevIndex = (currentTrackIndex - 1 + totalTracks) % totalTracks;
