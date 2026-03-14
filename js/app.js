@@ -411,6 +411,10 @@
         // Ensure display is visible
         trackPreviewUp.style.display = '';
         trackPreviewDown.style.display = '';
+        trackPreviewUp.style.visibility = '';
+        trackPreviewDown.style.visibility = '';
+        trackPreviewUp.style.opacity = '';
+        trackPreviewDown.style.opacity = '';
       } else if (direction === 'down') {
         // Loop: show last track when at first track
         const prevIndex = (currentTrackIndex - 1 + totalTracks) % totalTracks;
@@ -420,20 +424,32 @@
         // Ensure display is visible
         trackPreviewUp.style.display = '';
         trackPreviewDown.style.display = '';
+        trackPreviewUp.style.visibility = '';
+        trackPreviewDown.style.visibility = '';
+        trackPreviewUp.style.opacity = '';
+        trackPreviewDown.style.opacity = '';
       }
     }
 
     function hideTrackPreview() {
       trackPreviewUp.classList.remove('visible', 'up');
       trackPreviewDown.classList.remove('visible', 'down');
-      // Force hide with inline styles
+      // Force hide with inline styles - use visibility instead of display for more reliable hiding
       trackPreviewUp.style.display = 'none';
       trackPreviewDown.style.display = 'none';
+      trackPreviewUp.style.visibility = 'hidden';
+      trackPreviewDown.style.visibility = 'hidden';
+      trackPreviewUp.style.opacity = '0';
+      trackPreviewDown.style.opacity = '0';
     }
     
     function showTrackPreview() {
       trackPreviewUp.style.display = '';
       trackPreviewDown.style.display = '';
+      trackPreviewUp.style.visibility = '';
+      trackPreviewDown.style.visibility = '';
+      trackPreviewUp.style.opacity = '';
+      trackPreviewDown.style.opacity = '';
     }
 
     function showBoundaryHint(position) {
