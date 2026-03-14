@@ -47,6 +47,7 @@
     // Track switching variables
     let isTrackSwitching = false;
     let touchCurrentY = 0;
+    let ticking = false; // For requestAnimationFrame throttling
 
     // New DOM elements for track switching
     const trackPreviewUp = document.getElementById('trackPreviewUp');
@@ -254,8 +255,16 @@
       const scene = SCENES[currentSceneIndex];
       const track = scene.tracks[currentTrackIndex];
 
+      // Add enter animation for smooth transition
+      trackInfo.classList.add('entering');
+      
       trackName.textContent = track.title;
       trackArtist.textContent = track.artist;
+
+      // Remove entering animation after it completes
+      setTimeout(() => {
+        trackInfo.classList.remove('entering');
+      }, 300);
 
       // Stop current playback without unloading (keep preloaded sounds)
       if (isIOS) {
@@ -366,53 +375,48 @@
       const scene = SCENES[currentSceneIndex];
       const totalTracks = scene.tracks.length;
       
-      if (currentTrackIndex < totalTracks - 1) {
-        // Animate out
-        trackInfo.classList.add('switching-up');
+      // Loop: last track's next is first track
+      const nextIndex = (currentTrackIndex + 1) % totalTracks;
+      
+      // Animate out
+      trackInfo.classList.add('switching-up');
+      
+      setTimeout(() => {
+        currentTrackIndex = nextIndex;
+        loadTrack();
         
-        setTimeout(() => {
-          currentTrackIndex++;
-          loadTrack();
-          
-          // Reset animation
-          trackInfo.classList.remove('switching-up');
-          
-          // Auto-play if timer is running
-          if (pomodoroIsRunning) {
-            startPlayback();
-          }
-        }, 350);
-      } else {
-        // Boundary feedback
-        showBoundaryHint('last');
-        trackInfo.classList.add('bounce-up');
-        setTimeout(() => trackInfo.classList.remove('bounce-up'), 300);
-      }
+        // Reset animation
+        trackInfo.classList.remove('switching-up');
+        
+        // Auto-play if timer is running
+        if (pomodoroIsRunning) {
+          startPlayback();
+        }
+      }, 350);
     }
 
     function prevTrack() {
-      if (currentTrackIndex > 0) {
-        // Animate out
-        trackInfo.classList.add('switching-down');
+      const scene = SCENES[currentSceneIndex];
+      const totalTracks = scene.tracks.length;
+      
+      // Loop: first track's prev is last track
+      const prevIndex = (currentTrackIndex - 1 + totalTracks) % totalTracks;
+      
+      // Animate out
+      trackInfo.classList.add('switching-down');
+      
+      setTimeout(() => {
+        currentTrackIndex = prevIndex;
+        loadTrack();
         
-        setTimeout(() => {
-          currentTrackIndex--;
-          loadTrack();
-          
-          // Reset animation
-          trackInfo.classList.remove('switching-down');
-          
-          // Auto-play if timer is running
-          if (pomodoroIsRunning) {
-            startPlayback();
-          }
-        }, 350);
-      } else {
-        // Boundary feedback
-        showBoundaryHint('first');
-        trackInfo.classList.add('bounce-down');
-        setTimeout(() => trackInfo.classList.remove('bounce-down'), 300);
-      }
+        // Reset animation
+        trackInfo.classList.remove('switching-down');
+        
+        // Auto-play if timer is running
+        if (pomodoroIsRunning) {
+          startPlayback();
+        }
+      }, 350);
     }
 
     function updateTrackPreview(direction) {
@@ -420,20 +424,16 @@
       const totalTracks = scene.tracks.length;
       
       if (direction === 'up') {
-        if (currentTrackIndex < totalTracks - 1) {
-          previewNameUp.textContent = scene.tracks[currentTrackIndex + 1].title;
-          trackPreviewUp.classList.add('visible');
-        } else {
-          trackPreviewUp.classList.remove('visible');
-        }
+        // Loop: show first track when at last track
+        const nextIndex = (currentTrackIndex + 1) % totalTracks;
+        previewNameUp.textContent = scene.tracks[nextIndex].title;
+        trackPreviewUp.classList.add('visible');
         trackPreviewDown.classList.remove('visible');
       } else if (direction === 'down') {
-        if (currentTrackIndex > 0) {
-          previewNameDown.textContent = scene.tracks[currentTrackIndex - 1].title;
-          trackPreviewDown.classList.add('visible');
-        } else {
-          trackPreviewDown.classList.remove('visible');
-        }
+        // Loop: show last track when at first track
+        const prevIndex = (currentTrackIndex - 1 + totalTracks) % totalTracks;
+        previewNameDown.textContent = scene.tracks[prevIndex].title;
+        trackPreviewDown.classList.add('visible');
         trackPreviewUp.classList.remove('visible');
       }
     }
@@ -935,24 +935,30 @@
         isTrackSwitching = true;
       }
 
-      // Show preview during vertical swipe
-      if (isTrackSwitching) {
-        touchCurrentY = currentY;
-        const cumulativeDiffY = touchStartY - currentY;
+      // Show preview during vertical swipe with throttling
+      if (isTrackSwitching && !ticking) {
+        ticking = true;
+        
+        requestAnimationFrame(() => {
+          touchCurrentY = currentY;
+          const cumulativeDiffY = touchStartY - currentY;
 
-        if (cumulativeDiffY > 30) {
-          // Swiping up - show next track preview
-          updateTrackPreview('up');
-          // Add slight visual feedback to current track
-          trackInfo.style.transform = `translateY(${-cumulativeDiffY * 0.3}px)`;
-          trackInfo.style.opacity = Math.max(0.3, 0.7 - cumulativeDiffY / 200);
-        } else if (cumulativeDiffY < -30) {
-          // Swiping down - show prev track preview
-          updateTrackPreview('down');
-          // Add slight visual feedback to current track
-          trackInfo.style.transform = `translateY(${-cumulativeDiffY * 0.3}px)`;
-          trackInfo.style.opacity = Math.max(0.3, 0.7 + cumulativeDiffY / 200);
-        }
+          if (cumulativeDiffY > 30) {
+            // Swiping up - show next track preview
+            updateTrackPreview('up');
+            // Add slight visual feedback to current track
+            trackInfo.style.transform = `translateY(${-cumulativeDiffY * 0.3}px)`;
+            trackInfo.style.opacity = Math.max(0.3, 0.7 - cumulativeDiffY / 200);
+          } else if (cumulativeDiffY < -30) {
+            // Swiping down - show prev track preview
+            updateTrackPreview('down');
+            // Add slight visual feedback to current track
+            trackInfo.style.transform = `translateY(${-cumulativeDiffY * 0.3}px)`;
+            trackInfo.style.opacity = Math.max(0.3, 0.7 + cumulativeDiffY / 200);
+          }
+          
+          ticking = false;
+        });
       }
     }, { passive: true });
 
