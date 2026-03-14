@@ -6,9 +6,33 @@
 // Scene definitions with time-based auto-selection
 const SCENES = [
   {
+    id: 'forge',
+    name: 'Forge',
+    startHour: 7,
+    endHour: 9,
+    tracks: [
+      { title: 'Sport 1', artist: 'Flow x Zen', file: 'sport1.mp3' },
+      { title: 'Sport 2', artist: 'Flow x Zen', file: 'sport2.mp3' },
+      { title: 'Sport 3', artist: 'Flow x Zen', file: 'sport3.mp3' },
+      { title: 'Sport 4', artist: 'Flow x Zen', file: 'sport4.mp3' },
+      { title: 'Sport 5', artist: 'Flow x Zen', file: 'sport5.mp3' },
+      { title: 'Sport 6', artist: 'Flow x Zen', file: 'sport6.mp3' },
+      { title: 'Sport 7', artist: 'Flow x Zen', file: 'sport7.mp3' },
+      { title: 'Sport 8', artist: 'Flow x Zen', file: 'sport8.mp3' },
+      { title: 'Sport 9', artist: 'Flow x Zen', file: 'sport9.mp3' },
+      { title: 'Sport 10', artist: 'Flow x Zen', file: 'sport10.mp3' },
+      { title: 'Sport 11', artist: 'Flow x Zen', file: 'sport11.mp3' },
+      { title: 'Sport 12', artist: 'Flow x Zen', file: 'sport12.mp3' },
+      { title: 'Sport 13', artist: 'Flow x Zen', file: 'sport13.mp3' },
+      { title: 'Sport 14', artist: 'Flow x Zen', file: 'sport14.mp3' },
+      { title: 'Sport 15', artist: 'Flow x Zen', file: 'sport15.mp3' },
+      { title: 'Sport 16', artist: 'Flow x Zen', file: 'sport16.mp3' }
+    ]
+  },
+  {
     id: 'begin',
     name: 'Begin',
-    startHour: 8,
+    startHour: 9,
     endHour: 10,
     tracks: [
       { title: 'Morning Start', artist: 'Flow x Zen', file: 'Piano 1.mp3' },
@@ -60,6 +84,7 @@ const SCENES = [
 
 // Theme colors for each scene
 const SCENE_COLORS = {
+  forge: [230, 126, 34],    // Forge orange - iron glow
   begin: [244, 197, 105],   // Golden sunrise
   deep: [126, 184, 232],    // Deep blue
   flow: [232, 184, 74],     // Amber

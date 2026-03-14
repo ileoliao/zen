@@ -180,7 +180,7 @@
       // Update background gradient based on scene - smooth transition
       if (bgGradient) {
         // Remove old scene classes
-        bgGradient.classList.remove('begin', 'deep', 'flow', 'unwind');
+        bgGradient.classList.remove('forge', 'begin', 'deep', 'flow', 'unwind');
         // Add new scene class
         bgGradient.classList.add(scene.id);
       }
