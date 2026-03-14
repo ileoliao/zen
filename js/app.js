@@ -48,10 +48,6 @@
     let ticking = false; // For requestAnimationFrame throttling
 
     // New DOM elements for track switching
-    const trackPreviewUp = document.getElementById('trackPreviewUp');
-    const trackPreviewDown = document.getElementById('trackPreviewDown');
-    const previewNameUp = document.getElementById('previewNameUp');
-    const previewNameDown = document.getElementById('previewNameDown');
     const boundaryHint = document.getElementById('boundaryHint');
 
     // Mobile detection for iOS
@@ -253,9 +249,6 @@
       const scene = SCENES[currentSceneIndex];
       const track = scene.tracks[currentTrackIndex];
 
-      // Always hide track preview when loading a new track
-      hideTrackPreview();
-
       // Direct update without animation
       trackName.textContent = track.title;
       trackArtist.textContent = track.artist;
@@ -362,9 +355,6 @@
       const scene = SCENES[currentSceneIndex];
       const totalTracks = scene.tracks.length;
       
-      // Hide any visible track preview first
-      hideTrackPreview();
-      
       // Loop: last track's next is first track
       const nextIndex = (currentTrackIndex + 1) % totalTracks;
       
@@ -382,9 +372,6 @@
       const scene = SCENES[currentSceneIndex];
       const totalTracks = scene.tracks.length;
 
-      // Hide any visible track preview first
-      hideTrackPreview();
-
       // Loop: first track's prev is last track
       const prevIndex = (currentTrackIndex - 1 + totalTracks) % totalTracks;
 
@@ -396,60 +383,6 @@
       if (isPlaying) {
         startPlayback();
       }
-    }
-
-    function updateTrackPreview(direction) {
-      const scene = SCENES[currentSceneIndex];
-      const totalTracks = scene.tracks.length;
-      
-      if (direction === 'up') {
-        // Loop: show first track when at last track
-        const nextIndex = (currentTrackIndex + 1) % totalTracks;
-        previewNameUp.textContent = scene.tracks[nextIndex].title;
-        trackPreviewUp.classList.add('visible', 'up');
-        trackPreviewDown.classList.remove('visible', 'down');
-        // Ensure display is visible
-        trackPreviewUp.style.display = '';
-        trackPreviewDown.style.display = '';
-        trackPreviewUp.style.visibility = '';
-        trackPreviewDown.style.visibility = '';
-        trackPreviewUp.style.opacity = '';
-        trackPreviewDown.style.opacity = '';
-      } else if (direction === 'down') {
-        // Loop: show last track when at first track
-        const prevIndex = (currentTrackIndex - 1 + totalTracks) % totalTracks;
-        previewNameDown.textContent = scene.tracks[prevIndex].title;
-        trackPreviewDown.classList.add('visible', 'down');
-        trackPreviewUp.classList.remove('visible', 'up');
-        // Ensure display is visible
-        trackPreviewUp.style.display = '';
-        trackPreviewDown.style.display = '';
-        trackPreviewUp.style.visibility = '';
-        trackPreviewDown.style.visibility = '';
-        trackPreviewUp.style.opacity = '';
-        trackPreviewDown.style.opacity = '';
-      }
-    }
-
-    function hideTrackPreview() {
-      trackPreviewUp.classList.remove('visible', 'up');
-      trackPreviewDown.classList.remove('visible', 'down');
-      // Force hide with inline styles - use visibility instead of display for more reliable hiding
-      trackPreviewUp.style.display = 'none';
-      trackPreviewDown.style.display = 'none';
-      trackPreviewUp.style.visibility = 'hidden';
-      trackPreviewDown.style.visibility = 'hidden';
-      trackPreviewUp.style.opacity = '0';
-      trackPreviewDown.style.opacity = '0';
-    }
-    
-    function showTrackPreview() {
-      trackPreviewUp.style.display = '';
-      trackPreviewDown.style.display = '';
-      trackPreviewUp.style.visibility = '';
-      trackPreviewDown.style.visibility = '';
-      trackPreviewUp.style.opacity = '';
-      trackPreviewDown.style.opacity = '';
     }
 
     function showBoundaryHint(position) {
@@ -640,7 +573,6 @@
       sceneIndicator.classList.add('hidden');
       trackInfo.classList.remove('visible');
       swipeHint.classList.remove('visible');
-      hideTrackPreview();
     }
 
     function resetHideTimer() {
@@ -954,17 +886,7 @@
         ticking = true;
         
         requestAnimationFrame(() => {
-          touchCurrentY = currentY;
-          const cumulativeDiffY = touchStartY - currentY;
-
-          if (cumulativeDiffY > 30) {
-            // Swiping up - show next track preview only (no visual feedback on current track)
-            updateTrackPreview('up');
-          } else if (cumulativeDiffY < -30) {
-            // Swiping down - show prev track preview only (no visual feedback on current track)
-            updateTrackPreview('down');
-          }
-          
+          // Just track the swipe, no visual feedback needed
           ticking = false;
         });
       }
@@ -993,8 +915,6 @@
         } else {
           prevTrack(); // Swipe down = prev track
         }
-        // Force hide preview after track switch
-        hideTrackPreview();
         showUI();
       } else if (isHorizontalSwipe && Math.abs(diffX) > GESTURE_CONFIG.sceneSwitchThreshold) {
         // Horizontal swipe - switch scenes
@@ -1008,9 +928,6 @@
         // Tap - show UI
         showUI();
       }
-      
-      // Always hide preview on touch end (as safety)
-      hideTrackPreview();
 
       isTrackSwitching = false;
     }, { passive: true });
@@ -1022,8 +939,6 @@
       // Reset track info transform
       trackInfo.style.transform = '';
       trackInfo.style.opacity = '';
-      // Always hide preview on cancel
-      hideTrackPreview();
       isTrackSwitching = false;
     }, { passive: true });
 
