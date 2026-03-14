@@ -36,6 +36,7 @@
     const volumeOverlay = document.getElementById('volumeOverlay');
     const volumeFill = document.getElementById('volumeFill');
     const bgGradient = document.getElementById('bgGradient');
+    const loadingIndicator = document.getElementById('loadingIndicator');
 
     let hideTimeout;
     let touchStartX = 0;
@@ -97,61 +98,118 @@
       iosAudioPlayer.volume = DEFAULT_VOLUME;
     }
 
-    // Preload all audio using Howler
+    // Smart preload system with sliding window
     const preloadedSounds = {};
-    let musicPreloaded = false;
+    const preloadQueue = []; // 预加载队列
+    let isPreloading = false;
 
-    function preloadAllMusic() {
-      if (musicPreloaded) return;
-      musicPreloaded = true;
-
-      const allFiles = [];
-
-      // Prioritize current scene's tracks
-      const currentScene = SCENES[currentSceneIndex];
-      if (currentScene) {
-        currentScene.tracks.forEach(track => {
-          if (!allFiles.includes(track.file)) {
-            allFiles.push(track.file);
-          }
+    // Get list of tracks to preload based on sliding window strategy
+    function getTracksToPreload(sceneIndex, trackIndex, count) {
+      const scene = SCENES[sceneIndex];
+      const tracks = [];
+      
+      for (let i = 0; i < count; i++) {
+        const idx = (trackIndex + i) % scene.tracks.length;
+        tracks.push({
+          file: scene.tracks[idx].file,
+          priority: i === 0 ? 'high' : 'normal' // 当前曲目高优先级
         });
       }
+      
+      return tracks;
+    }
 
-      // Then queue the rest
-      SCENES.forEach((scene, index) => {
-        if (index === currentSceneIndex) return; // Already loaded
-        scene.tracks.forEach(track => {
-          if (!allFiles.includes(track.file)) {
-            allFiles.push(track.file);
-          }
-        });
-      });
-
-      // Start preloading in priority order
-      // On desktop, we use Howler to preload via Web Audio API.
-      // On iOS, we fetch the audio files directly into the browser's disk cache
-      // because iOS Safari refuses to preload <audio> elements before user interaction.
+    // Preload specific track with priority
+    function preloadTrack(file, priority = 'normal') {
+      if (preloadedSounds[file]) return; // Already loaded
+      
       if (isIOS) {
-        allFiles.forEach(file => {
-          fetch(`music/${file}`, { mode: 'no-cors' }).catch(err => {
-            console.warn(`Failed to pre-cache ${file} on iOS:`, err);
-          });
+        // iOS: Use fetch for disk cache
+        fetch(`music/${file}`, { mode: 'no-cors' }).catch(err => {
+          console.warn(`Failed to pre-cache ${file} on iOS:`, err);
         });
         return;
       }
 
-      allFiles.forEach(file => {
-        preloadedSounds[file] = new Howl({
-          src: [`music/${file}`],
-          html5: false, // Desktop uses Web Audio API
-          preload: true,
-          volume: DEFAULT_VOLUME,
-
-          onloaderror: function (id, err) {
-            console.error(`Failed to load ${file}:`, err);
-          }
-        });
+      // Desktop: Use Howler with streaming support
+      preloadedSounds[file] = new Howl({
+        src: [`music/${file}`],
+        html5: PRELOAD_CONFIG.enableStreaming, // Use streaming
+        preload: priority === 'high', // Only high priority auto-preload
+        volume: DEFAULT_VOLUME,
+        
+        onload: function() {
+          console.log(`Loaded: ${file}`);
+        },
+        
+        onloaderror: function(id, err) {
+          console.error(`Failed to load ${file}:`, err);
+          delete preloadedSounds[file]; // Remove from cache on error
+        }
       });
+    }
+
+    // Cleanup old preloaded sounds (keep only bufferSize tracks)
+    function cleanupPreloadedSounds(keepFiles) {
+      Object.keys(preloadedSounds).forEach(file => {
+        if (!keepFiles.includes(file)) {
+          const sound = preloadedSounds[file];
+          if (sound && !sound.playing()) {
+            sound.unload(); // Release memory
+            delete preloadedSounds[file];
+            console.log(`Unloaded: ${file}`);
+          }
+        }
+      });
+    }
+
+    // Loading indicator helpers
+    function showLoading() {
+      if (loadingIndicator) loadingIndicator.classList.add('visible');
+    }
+
+    function hideLoading() {
+      if (loadingIndicator) loadingIndicator.classList.remove('visible');
+    }
+
+    // Smart preload for current position
+    function smartPreload() {
+      const tracks = getTracksToPreload(
+        currentSceneIndex, 
+        currentTrackIndex, 
+        PRELOAD_CONFIG.bufferSize
+      );
+      
+      const keepFiles = tracks.map(t => t.file);
+      
+      // Cleanup old sounds
+      cleanupPreloadedSounds(keepFiles);
+      
+      // Preload new tracks with priority
+      tracks.forEach((track, index) => {
+        setTimeout(() => {
+          preloadTrack(track.file, track.priority);
+        }, index * 200); // Stagger loading to avoid overwhelming
+      });
+    }
+
+    // Preload scene tracks on switch
+    function preloadScene(sceneIndex) {
+      const scene = SCENES[sceneIndex];
+      const count = Math.min(PRELOAD_CONFIG.scenePreloadCount, scene.tracks.length);
+      
+      for (let i = 0; i < count; i++) {
+        const file = scene.tracks[i].file;
+        setTimeout(() => {
+          preloadTrack(file, i === 0 ? 'high' : 'normal');
+        }, i * 300);
+      }
+    }
+
+    // Legacy function for compatibility
+    function preloadAllMusic() {
+      // Now uses smartPreload instead
+      smartPreload();
     }
 
     function getSceneByTime() {
@@ -187,6 +245,9 @@
 
       currentTrackIndex = 0;
       loadTrack();
+
+      // Preload first few tracks of new scene
+      setTimeout(() => preloadScene(index), 500);
     }
 
     function loadTrack() {
@@ -230,6 +291,9 @@
           currentHowl.on('end', onTrackEnd);
         }
       }
+
+      // Trigger smart preload for next tracks
+      setTimeout(() => smartPreload(), 100);
     }
 
     // Create Howl on demand (only called during user interaction)
@@ -403,6 +467,7 @@
 
     function startPlayback() {
       playBtn.classList.add('loading');
+      showLoading();
 
       // 1. Desktop: Web Audio Context Resurrection
       if (!isIOS) {
@@ -476,6 +541,7 @@
     function onPlaybackStart() {
       isPlaying = true;
       playBtn.classList.remove('loading');
+      hideLoading();
       playIcon.style.display = 'none';
       pauseIcon.style.display = 'block';
       playBtn.classList.add('playing');

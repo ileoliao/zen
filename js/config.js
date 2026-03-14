@@ -118,6 +118,14 @@ const GESTURE_CONFIG = {
   uiHideDelay: 4000         // ms
 };
 
+// Preload configuration
+const PRELOAD_CONFIG = {
+  bufferSize: 3,           // 内存中保持的曲目数量（当前 + 接下来2首）
+  scenePreloadCount: 3,    // 切换场景时预加载的曲目数
+  enableStreaming: true,   // 启用流式播放
+  preloadOnIdle: true      // 空闲时预加载
+};
+
 // Default volume
 const DEFAULT_VOLUME = 0.8;
 
@@ -129,6 +137,7 @@ if (typeof module !== 'undefined' && module.exports) {
     AUDIO_CONFIG,
     POMODORO_CONFIG,
     GESTURE_CONFIG,
+    PRELOAD_CONFIG,
     DEFAULT_VOLUME
   };
 }
