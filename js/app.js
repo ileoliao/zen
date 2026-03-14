@@ -326,7 +326,7 @@
 
     let analyserConnected = false;
 
-    function initAudioContext() {
+    function initAudioContext(forceReconnect = false) {
       // If we are using HTML5 Audio (iOS), we cannot use AnalyserNode reliably
       // without CORS issues or MediaElementSource complications on Safari.
       // So we skip it entirely.
@@ -350,8 +350,16 @@
       // Existing: Howler.masterGain → ctx.destination (keep for audio output)
       // Added:   Howler.masterGain → analyser (for visualization data only)
       // This way audio always reaches speakers even if analyser fails
-      if (analyser && Howler.masterGain && !analyserConnected) {
+      if (analyser && Howler.masterGain && (!analyserConnected || forceReconnect)) {
         try {
+          // If forcing reconnect, disconnect first to avoid duplicate connections
+          if (forceReconnect && analyserConnected) {
+            try {
+              Howler.masterGain.disconnect(analyser);
+            } catch (e) {
+              // Ignore disconnect errors
+            }
+          }
           Howler.masterGain.connect(analyser);
           analyserConnected = true;
         } catch (e) {
@@ -364,7 +372,7 @@
       currentTrackIndex = (currentTrackIndex + 1) % SCENES[currentSceneIndex].tracks.length;
       loadTrack();
       if (isPlaying) {
-        startPlayback();
+        startPlayback(true); // Force reconnect analyser for visualization
       }
     }
 
@@ -388,7 +396,7 @@
 
         // Auto-play if music was playing
         if (isPlaying) {
-          startPlayback();
+          startPlayback(true); // Force reconnect analyser for visualization
         }
       }, 350);
     }
@@ -412,7 +420,7 @@
 
         // Auto-play if music was playing
         if (isPlaying) {
-          startPlayback();
+          startPlayback(true); // Force reconnect analyser for visualization
         }
       }, 350);
     }
@@ -463,7 +471,7 @@
       playBtn.blur();
     }
 
-    function startPlayback() {
+    function startPlayback(forceReconnect = false) {
       playBtn.classList.add('loading');
       showLoading();
 
@@ -485,7 +493,8 @@
       }
 
       // Initialize audio context for analysis (bypasses on iOS)
-      initAudioContext();
+      // Force reconnect when switching tracks to ensure visualization works
+      initAudioContext(forceReconnect);
 
       // Check if already loaded
       if (isIOS) {
