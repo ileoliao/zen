@@ -2,7 +2,7 @@
 :root {
   --color-bg-dark: #0a0a0f;
   --color-text: #fff;
-  --color-scene-forge: #e67e22;
+  --color-scene-forge: #ffc832;
   --color-scene-begin: #f4c569;
   --color-scene-deep: #7eb8e8;
   --color-scene-flow: #e8b84a;
@@ -81,13 +81,27 @@ body {
     radial-gradient(ellipse at 50% 50%, rgba(22, 15, 18, 1) 0%, rgba(12, 10, 12, 1) 100%);
 }
 
-/* Forge - Training/Gym atmosphere with iron glow */
+/* Forge - Energy burst theme with golden power */
 .bg-gradient.forge {
   background:
-    radial-gradient(ellipse at 50% 50%, rgba(230, 126, 34, 0.2) 0%, transparent 60%),
-    radial-gradient(ellipse at 30% 70%, rgba(44, 62, 80, 0.3) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 30%, rgba(52, 73, 94, 0.2) 0%, transparent 55%),
-    radial-gradient(ellipse at 50% 50%, rgba(28, 28, 30, 1) 0%, rgba(15, 15, 18, 1) 100%);
+    /* Center sunburst - intense golden energy */
+    radial-gradient(circle at 50% 50%, rgba(255, 200, 50, 0.5) 0%, transparent 40%),
+    /* Outer energy halo - warm orange glow */
+    radial-gradient(circle at 50% 50%, rgba(255, 150, 0, 0.35) 0%, transparent 70%),
+    /* Bottom horizon - darker ground */
+    radial-gradient(ellipse at 50% 100%, rgba(80, 50, 10, 0.4) 0%, transparent 50%),
+    /* Base dark background - warm brown undertones */
+    radial-gradient(ellipse at 50% 50%, rgba(25, 18, 8, 1) 0%, rgba(12, 10, 5, 1) 100%);
+  animation: forge-energy-pulse 3s ease-in-out infinite;
+}
+
+@keyframes forge-energy-pulse {
+  0%, 100% {
+    opacity: 0.95;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* Noise texture overlay */
@@ -275,6 +289,30 @@ body {
 
 .play-button.playing:hover .play-icon {
   opacity: 0.25;
+}
+
+/* Forge scene - glowing play button */
+.play-button.forge {
+  box-shadow: 0 0 30px rgba(255, 200, 50, 0.4),
+              0 0 60px rgba(255, 150, 0, 0.2);
+  border-color: rgba(255, 200, 50, 0.3);
+}
+
+.play-button.forge.playing {
+  box-shadow: 0 0 40px rgba(255, 200, 50, 0.5),
+              0 0 80px rgba(255, 150, 0, 0.3);
+  animation: forge-button-pulse 2s ease-in-out infinite;
+}
+
+@keyframes forge-button-pulse {
+  0%, 100% {
+    box-shadow: 0 0 40px rgba(255, 200, 50, 0.5),
+                0 0 80px rgba(255, 150, 0, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 50px rgba(255, 200, 50, 0.6),
+                0 0 100px rgba(255, 150, 0, 0.4);
+  }
 }
 
 /* ===== Track Info ===== */
