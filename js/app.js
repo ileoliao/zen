@@ -271,9 +271,10 @@
         currentHowl.stop();
       }
 
-      // Reset onset detection when switching tracks
-      previousEnergy = 0;
-      visualIntensity = 0;
+      // Keep onset detection state for smooth transition during track switch
+      // Only clear bassHistory, preserve previousEnergy and visualIntensity
+      // previousEnergy = 0;
+      // visualIntensity = 0;
       bassHistory = [];
 
       const file = track.file;
@@ -283,20 +284,12 @@
         iosAudioPlayer.src = `music/${file}`;
         iosAudioPlayer.load();
       } else {
-        // Use preloaded Howl if available
-        // Don't create new Howl here to avoid creating AudioContext before user gesture
-        if (preloadedSounds[file]) {
-          currentHowl = preloadedSounds[file];
-        } else {
-          // Will be created in ensureCurrentHowl() when playback starts
-          currentHowl = null;
-        }
-
-        // Register onend callback so tracks auto-advance
-        if (currentHowl) {
-          currentHowl.off('end');
-          currentHowl.on('end', onTrackEnd);
-        }
+        // FIX: Always create new Howl instance to ensure proper connection to masterGain
+        // Reusing cached Howl may cause connection issues after stop()/play()
+        // Preloaded sound is only used for caching, not for direct reuse
+        currentHowl = null; // Force creating new Howl in ensureCurrentHowl()
+        
+        // Note: We don't unregister onend from preloadedSounds as we're not using it directly
       }
 
       // Trigger smart preload for next tracks
@@ -310,16 +303,16 @@
       const track = scene.tracks[currentTrackIndex];
       const file = track.file;
 
-      if (preloadedSounds[file]) {
-        currentHowl = preloadedSounds[file];
-      } else {
-        currentHowl = new Howl({
-          src: [`music/${file}`],
-          html5: false,
-          volume: DEFAULT_VOLUME
-        });
-      }
+      // FIX: Always create new Howl with Web Audio API mode (html5: false)
+      // Preloaded sounds use html5 mode for streaming, which doesn't work with AnalyserNode
+      // We must use Web Audio API mode for visualization to work
+      currentHowl = new Howl({
+        src: [`music/${file}`],
+        html5: false,  // Force Web Audio API mode for spectrum visualization
+        volume: DEFAULT_VOLUME
+      });
 
+      // Register onend callback for auto-advance
       currentHowl.off('end');
       currentHowl.on('end', onTrackEnd);
     }
@@ -350,16 +343,8 @@
       // Existing: Howler.masterGain → ctx.destination (keep for audio output)
       // Added:   Howler.masterGain → analyser (for visualization data only)
       // This way audio always reaches speakers even if analyser fails
-      if (analyser && Howler.masterGain && (!analyserConnected || forceReconnect)) {
+      if (analyser && Howler.masterGain && !analyserConnected) {
         try {
-          // If forcing reconnect, disconnect first to avoid duplicate connections
-          if (forceReconnect && analyserConnected) {
-            try {
-              Howler.masterGain.disconnect(analyser);
-            } catch (e) {
-              // Ignore disconnect errors
-            }
-          }
           Howler.masterGain.connect(analyser);
           analyserConnected = true;
         } catch (e) {
@@ -372,7 +357,7 @@
       currentTrackIndex = (currentTrackIndex + 1) % SCENES[currentSceneIndex].tracks.length;
       loadTrack();
       if (isPlaying) {
-        startPlayback(true); // Force reconnect analyser for visualization
+        startPlayback(); // No need to reconnect analyser, masterGain stays connected
       }
     }
 
@@ -396,7 +381,7 @@
 
         // Auto-play if music was playing
         if (isPlaying) {
-          startPlayback(true); // Force reconnect analyser for visualization
+          startPlayback(); // No need to reconnect analyser, masterGain stays connected
         }
       }, 350);
     }
@@ -420,7 +405,7 @@
 
         // Auto-play if music was playing
         if (isPlaying) {
-          startPlayback(true); // Force reconnect analyser for visualization
+          startPlayback(); // No need to reconnect analyser, masterGain stays connected
         }
       }, 350);
     }
@@ -673,12 +658,19 @@
       let audioIntensity = 0;
 
       // Only do audio visualization when music is actually playing
-      const isActuallyPlaying = isIOS ? (!iosAudioPlayer.paused) : (currentHowl && currentHowl.playing());
+      const isActuallyPlaying = isIOS ? (!iosAudioPlayer.paused) : isPlaying;
 
       if (isActuallyPlaying && !isIOS) {
         // Get audio frequency data if available
         if (analyser && dataArray) {
           analyser.getByteFrequencyData(dataArray);
+          
+          // DEBUG: Log spectrum data every 60 frames (about 1 second)
+          if (frameCount % 60 === 0) {
+            const maxVal = Math.max(...dataArray);
+            const avgVal = dataArray.reduce((a,b) => a+b, 0) / dataArray.length;
+            console.log(`DEBUG visualize [frame ${frameCount}]: max=${maxVal.toFixed(1)}, avg=${avgVal.toFixed(1)}, isPlaying=${isPlaying}, currentHowl?.playing()=${currentHowl?.playing()}`);
+          }
 
           // Capture low frequencies: bass + low-mids for piano and kick drum
           // fftSize 256 = 128 bins. With 44.1kHz sample rate:
