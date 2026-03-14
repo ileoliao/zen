@@ -253,6 +253,9 @@
       const scene = SCENES[currentSceneIndex];
       const track = scene.tracks[currentTrackIndex];
 
+      // Always hide track preview when loading a new track
+      hideTrackPreview();
+
       // Add enter animation for smooth transition
       trackInfo.classList.add('entering');
       
@@ -366,6 +369,9 @@
       const scene = SCENES[currentSceneIndex];
       const totalTracks = scene.tracks.length;
       
+      // Hide any visible track preview first
+      hideTrackPreview();
+      
       // Loop: last track's next is first track
       const nextIndex = (currentTrackIndex + 1) % totalTracks;
       
@@ -389,6 +395,9 @@
     function prevTrack() {
       const scene = SCENES[currentSceneIndex];
       const totalTracks = scene.tracks.length;
+
+      // Hide any visible track preview first
+      hideTrackPreview();
 
       // Loop: first track's prev is last track
       const prevIndex = (currentTrackIndex - 1 + totalTracks) % totalTracks;
@@ -995,6 +1004,18 @@
         showUI();
       }
 
+      isTrackSwitching = false;
+    }, { passive: true });
+
+    // Handle touch cancel (e.g., finger moved out of screen or call interrupt)
+    // This ensures track preview is always hidden even if touchend doesn't fire properly
+    document.addEventListener('touchcancel', () => {
+      clearTimeout(longPressTimer);
+      // Reset track info transform
+      trackInfo.style.transform = '';
+      trackInfo.style.opacity = '';
+      // Always hide preview on cancel
+      hideTrackPreview();
       isTrackSwitching = false;
     }, { passive: true });
 
