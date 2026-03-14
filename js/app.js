@@ -664,54 +664,49 @@
         // Get audio frequency data if available
         if (analyser && dataArray) {
           analyser.getByteFrequencyData(dataArray);
+
+          // Extract 0-300Hz range for kick drum detection (bins 0-1)
+          // fftSize 256 = 128 bins @ 44.1kHz = ~172Hz per bin
+          const kickBin0 = dataArray[0] / 255;  // 0-172Hz (kick fundamental)
+          const kickBin1 = dataArray[1] / 255;  // 172-344Hz (reduced to minimize guitar/hi-hat)
+          const kickEnergy = kickBin0 * 0.85 + kickBin1 * 0.15; // 85% low freq, 15% mid freq
           
-          // DEBUG: Log spectrum data every 60 frames (about 1 second)
-          if (frameCount % 60 === 0) {
-            const maxVal = Math.max(...dataArray);
-            const avgVal = dataArray.reduce((a,b) => a+b, 0) / dataArray.length;
-            console.log(`DEBUG visualize [frame ${frameCount}]: max=${maxVal.toFixed(1)}, avg=${avgVal.toFixed(1)}, isPlaying=${isPlaying}, currentHowl?.playing()=${currentHowl?.playing()}`);
+          // DEBUG: Log kick energy (disabled for production)
+          // if (frameCount % 60 === 0) {
+          //   console.log(`Kick: bin0=${kickBin0.toFixed(3)}, energy=${kickEnergy.toFixed(3)}`);
+          // }
+          
+          // Store energy history
+          if (!window.kickHistory) window.kickHistory = [];
+          window.kickHistory.push(kickEnergy);
+          if (window.kickHistory.length > 8) window.kickHistory.shift();
+          
+          // Calculate short-term average (last 5 frames)
+          const shortTermAvg = window.kickHistory.slice(-5).reduce((a, b) => a + b, 0) / 5;
+          
+          // Detect local peaks: current > recent average
+          const ratio = kickEnergy / shortTermAvg;
+          const delta = kickEnergy - (window.kickHistory[window.kickHistory.length - 2] || 0);
+          
+          let trigger = 0;
+          // Trigger if: above short-term average OR significant rise
+          if (ratio > 1.03 && delta > -0.01) {  // 3% above recent average
+            trigger = Math.min(1, (ratio - 1) * 15 + 0.4);
+            // console.log('TRIGGER!', `ratio=${ratio.toFixed(3)}, trigger=${trigger.toFixed(2)}`);
+          } else if (delta > 0.015) {
+            trigger = Math.min(0.8, delta * 25);
+            // console.log('TRIGGER2!', `delta=${delta.toFixed(3)}, trigger=${trigger.toFixed(2)}`);
           }
-
-          // Capture low frequencies: bass + low-mids for piano and kick drum
-          // fftSize 256 = 128 bins. With 44.1kHz sample rate:
-          // bin 0-7 (~0-1300Hz): captures bass notes, low piano chords, kick drum
-          const lowBinCount = Math.min(8, dataArray.length);
-          let lowSum = 0;
-
-          for (let i = 0; i < lowBinCount; i++) {
-            lowSum += dataArray[i];
+          
+          // Apply with fast attack
+          if (trigger > 0) {
+            visualIntensity = Math.min(1.0, visualIntensity + trigger);
           }
-
-          // Calculate current frame energy (normalized 0-1)
-          const currentEnergy = lowSum / lowBinCount / 255;
-
-          // ONSET DETECTION: Detect sudden energy increase (attack/beat)
-          const energyDelta = currentEnergy - previousEnergy;
-          let onsetStrength = 0;
-
-          if (energyDelta > AUDIO_CONFIG.onsetThreshold) {
-            // Onset detected! Calculate strength based on how sharp the increase is
-            onsetStrength = Math.min(1, energyDelta * AUDIO_CONFIG.onsetSensitivity);
-          }
-
-          // Update visual intensity:
-          // 1. If there's an onset, add it to current intensity (stacking for strong beats)
-          // 2. Always apply decay to create fade-out effect
-          if (onsetStrength > 0) {
-            // Add new onset to existing intensity (cap at 1.0)
-            visualIntensity = Math.min(1.0, visualIntensity + onsetStrength * 0.8);
-          }
-
-          // Apply decay every frame
-          visualIntensity *= AUDIO_CONFIG.decayRate;
-
-          // Minimum breathing level so it's never completely flat
-          visualIntensity = Math.max(0.12, visualIntensity);
-
-          // Store current energy for next frame
-          previousEnergy = currentEnergy;
-
-          // Use visualIntensity directly (no additional smoothing needed due to decay)
+          
+          // Decay - faster (was 0.92)
+          visualIntensity *= 0.96;
+          visualIntensity = Math.max(0.1, visualIntensity);
+          
           audioIntensity = visualIntensity;
         }
       } else if (isActuallyPlaying && isIOS) {
@@ -735,29 +730,33 @@
         audioIntensity = 0.12;
       }
 
-      // Less smoothing for more responsive pulse effect
-      smoothedIntensity = smoothedIntensity + (audioIntensity - smoothedIntensity) * 0.25;
+      // Fast response - 2x speed (was 0.3)
+      smoothedIntensity = smoothedIntensity + (audioIntensity - smoothedIntensity) * 0.6;
 
-      // Calculate scale based on audio intensity - more dramatic range
+      // DRAMATIC visual effects for kick drum beats
       const baseScale = 1;
-      const maxScale = 1.2;
-      const targetScale = baseScale + smoothedIntensity * (maxScale - baseScale);
-      smoothedScale = smoothedScale + (targetScale - smoothedScale) * 0.15;
+      // REDUCED visual effects by 50% for subtler beat visualization
+      const maxScale = 1.2;  // 20% scale increase (50% of previous 40%)
+      // Use power curve for more punch
+      const amplifiedIntensity = Math.pow(smoothedIntensity, 0.6);
+      const targetScale = baseScale + amplifiedIntensity * (maxScale - baseScale);
+      smoothedScale = smoothedScale + (targetScale - smoothedScale) * 0.24; // 2x faster
 
       // Get scene color from config
       const baseColor = SCENE_COLORS[SCENES[currentSceneIndex].id] || [168, 200, 236];
 
-      // Dynamic opacity based on intensity
-      const opacity = 0.8 + smoothedIntensity * 0.15;
+      // REDUCED opacity range by 50%
+      const opacity = 0.875 + smoothedIntensity * 0.125; // 0.875 to 1.0 (narrower range)
 
-      // Dynamic glow based on intensity - smaller, more subtle range
-      const glowSize = 30 + smoothedIntensity * 60; // 30 to 90px
-      const glowAlpha = 0.4 + smoothedIntensity * 0.3; // More subtle base glow
+      // REDUCED glow effects by 50%
+      const glowSize = 20 + amplifiedIntensity * 50; // 20 to 70px (50% of 100px range)
+      const glowSpread = amplifiedIntensity * 20; // 0 to 20px spread (50% of 40px)
+      const glowAlpha = 0.35 + amplifiedIntensity * 0.25; // 0.35 to 0.6 (50% of 0.5 range)
       const glowColor = `rgba(${baseColor.join(',')}, ${glowAlpha})`;
 
       playBtn.style.transform = `scale(${smoothedScale})`;
-      playBtn.style.boxShadow = `0 0 ${glowSize}px ${smoothedIntensity * 15}px ${glowColor}`;
-      playBtn.style.borderColor = `rgba(${baseColor.join(',')}, ${0.5 + smoothedIntensity * 0.3})`;
+      playBtn.style.boxShadow = `0 0 ${glowSize}px ${glowSpread}px ${glowColor}`;
+      playBtn.style.borderColor = `rgba(${baseColor.join(',')}, ${0.4 + smoothedIntensity * 0.2})`; // Also reduced border effect
       playBtn.style.opacity = opacity;
       progressRing.style.stroke = `rgb(${baseColor.join(',')})`;
     }
