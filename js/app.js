@@ -271,9 +271,10 @@
         currentHowl.stop();
       }
 
-      // Reset onset detection when switching tracks
-      previousEnergy = 0;
-      visualIntensity = 0;
+      // Keep onset detection state for smooth transition during track switch
+      // Only clear bassHistory, preserve previousEnergy and visualIntensity
+      // previousEnergy = 0;
+      // visualIntensity = 0;
       bassHistory = [];
 
       const file = track.file;
@@ -283,20 +284,12 @@
         iosAudioPlayer.src = `music/${file}`;
         iosAudioPlayer.load();
       } else {
-        // Use preloaded Howl if available
-        // Don't create new Howl here to avoid creating AudioContext before user gesture
-        if (preloadedSounds[file]) {
-          currentHowl = preloadedSounds[file];
-        } else {
-          // Will be created in ensureCurrentHowl() when playback starts
-          currentHowl = null;
-        }
-
-        // Register onend callback so tracks auto-advance
-        if (currentHowl) {
-          currentHowl.off('end');
-          currentHowl.on('end', onTrackEnd);
-        }
+        // FIX: Always create new Howl instance to ensure proper connection to masterGain
+        // Reusing cached Howl may cause connection issues after stop()/play()
+        // Preloaded sound is only used for caching, not for direct reuse
+        currentHowl = null; // Force creating new Howl in ensureCurrentHowl()
+        
+        // Note: We don't unregister onend from preloadedSounds as we're not using it directly
       }
 
       // Trigger smart preload for next tracks
@@ -310,23 +303,23 @@
       const track = scene.tracks[currentTrackIndex];
       const file = track.file;
 
-      if (preloadedSounds[file]) {
-        currentHowl = preloadedSounds[file];
-      } else {
-        currentHowl = new Howl({
-          src: [`music/${file}`],
-          html5: false,
-          volume: DEFAULT_VOLUME
-        });
-      }
+      // FIX: Always create new Howl with Web Audio API mode (html5: false)
+      // Preloaded sounds use html5 mode for streaming, which doesn't work with AnalyserNode
+      // We must use Web Audio API mode for visualization to work
+      currentHowl = new Howl({
+        src: [`music/${file}`],
+        html5: false,  // Force Web Audio API mode for spectrum visualization
+        volume: DEFAULT_VOLUME
+      });
 
+      // Register onend callback for auto-advance
       currentHowl.off('end');
       currentHowl.on('end', onTrackEnd);
     }
 
     let analyserConnected = false;
 
-    function initAudioContext() {
+    function initAudioContext(forceReconnect = false) {
       // If we are using HTML5 Audio (iOS), we cannot use AnalyserNode reliably
       // without CORS issues or MediaElementSource complications on Safari.
       // So we skip it entirely.
@@ -364,7 +357,7 @@
       currentTrackIndex = (currentTrackIndex + 1) % SCENES[currentSceneIndex].tracks.length;
       loadTrack();
       if (isPlaying) {
-        startPlayback();
+        startPlayback(); // No need to reconnect analyser, masterGain stays connected
       }
     }
 
@@ -382,13 +375,13 @@
       setTimeout(() => {
         currentTrackIndex = nextIndex;
         loadTrack();
-        
+
         // Reset animation
         trackInfo.classList.remove('switching-up');
-        
-        // Auto-play if timer is running
-        if (pomodoroIsRunning) {
-          startPlayback();
+
+        // Auto-play if music was playing
+        if (isPlaying) {
+          startPlayback(); // No need to reconnect analyser, masterGain stays connected
         }
       }, 350);
     }
@@ -396,23 +389,23 @@
     function prevTrack() {
       const scene = SCENES[currentSceneIndex];
       const totalTracks = scene.tracks.length;
-      
+
       // Loop: first track's prev is last track
       const prevIndex = (currentTrackIndex - 1 + totalTracks) % totalTracks;
-      
+
       // Animate out
       trackInfo.classList.add('switching-down');
-      
+
       setTimeout(() => {
         currentTrackIndex = prevIndex;
         loadTrack();
-        
+
         // Reset animation
         trackInfo.classList.remove('switching-down');
-        
-        // Auto-play if timer is running
-        if (pomodoroIsRunning) {
-          startPlayback();
+
+        // Auto-play if music was playing
+        if (isPlaying) {
+          startPlayback(); // No need to reconnect analyser, masterGain stays connected
         }
       }, 350);
     }
@@ -463,7 +456,7 @@
       playBtn.blur();
     }
 
-    function startPlayback() {
+    function startPlayback(forceReconnect = false) {
       playBtn.classList.add('loading');
       showLoading();
 
@@ -485,7 +478,8 @@
       }
 
       // Initialize audio context for analysis (bypasses on iOS)
-      initAudioContext();
+      // Force reconnect when switching tracks to ensure visualization works
+      initAudioContext(forceReconnect);
 
       // Check if already loaded
       if (isIOS) {
@@ -598,13 +592,17 @@
 
     function nextScene() {
       loadScene((currentSceneIndex + 1) % SCENES.length);
-      play();
+      if (isPlaying) {
+        play();
+      }
       showUI();
     }
 
     function prevScene() {
       loadScene((currentSceneIndex - 1 + SCENES.length) % SCENES.length);
-      play();
+      if (isPlaying) {
+        play();
+      }
       showUI();
     }
 
@@ -660,53 +658,55 @@
       let audioIntensity = 0;
 
       // Only do audio visualization when music is actually playing
-      const isActuallyPlaying = isIOS ? (!iosAudioPlayer.paused) : (currentHowl && currentHowl.playing());
+      const isActuallyPlaying = isIOS ? (!iosAudioPlayer.paused) : isPlaying;
 
       if (isActuallyPlaying && !isIOS) {
         // Get audio frequency data if available
         if (analyser && dataArray) {
           analyser.getByteFrequencyData(dataArray);
 
-          // Capture low frequencies: bass + low-mids for piano and kick drum
-          // fftSize 256 = 128 bins. With 44.1kHz sample rate:
-          // bin 0-7 (~0-1300Hz): captures bass notes, low piano chords, kick drum
-          const lowBinCount = Math.min(8, dataArray.length);
-          let lowSum = 0;
-
-          for (let i = 0; i < lowBinCount; i++) {
-            lowSum += dataArray[i];
+          // Extract 0-300Hz range for kick drum detection (bins 0-1)
+          // fftSize 256 = 128 bins @ 44.1kHz = ~172Hz per bin
+          const kickBin0 = dataArray[0] / 255;  // 0-172Hz (kick fundamental)
+          const kickBin1 = dataArray[1] / 255;  // 172-344Hz (reduced to minimize guitar/hi-hat)
+          const kickEnergy = kickBin0 * 0.85 + kickBin1 * 0.15; // 85% low freq, 15% mid freq
+          
+          // DEBUG: Log kick energy (disabled for production)
+          // if (frameCount % 60 === 0) {
+          //   console.log(`Kick: bin0=${kickBin0.toFixed(3)}, energy=${kickEnergy.toFixed(3)}`);
+          // }
+          
+          // Store energy history
+          if (!window.kickHistory) window.kickHistory = [];
+          window.kickHistory.push(kickEnergy);
+          if (window.kickHistory.length > 8) window.kickHistory.shift();
+          
+          // Calculate short-term average (last 5 frames)
+          const shortTermAvg = window.kickHistory.slice(-5).reduce((a, b) => a + b, 0) / 5;
+          
+          // Detect local peaks: current > recent average
+          const ratio = kickEnergy / shortTermAvg;
+          const delta = kickEnergy - (window.kickHistory[window.kickHistory.length - 2] || 0);
+          
+          let trigger = 0;
+          // Trigger if: above short-term average OR significant rise
+          if (ratio > 1.03 && delta > -0.01) {  // 3% above recent average
+            trigger = Math.min(1, (ratio - 1) * 15 + 0.4);
+            // console.log('TRIGGER!', `ratio=${ratio.toFixed(3)}, trigger=${trigger.toFixed(2)}`);
+          } else if (delta > 0.015) {
+            trigger = Math.min(0.8, delta * 25);
+            // console.log('TRIGGER2!', `delta=${delta.toFixed(3)}, trigger=${trigger.toFixed(2)}`);
           }
-
-          // Calculate current frame energy (normalized 0-1)
-          const currentEnergy = lowSum / lowBinCount / 255;
-
-          // ONSET DETECTION: Detect sudden energy increase (attack/beat)
-          const energyDelta = currentEnergy - previousEnergy;
-          let onsetStrength = 0;
-
-          if (energyDelta > AUDIO_CONFIG.onsetThreshold) {
-            // Onset detected! Calculate strength based on how sharp the increase is
-            onsetStrength = Math.min(1, energyDelta * AUDIO_CONFIG.onsetSensitivity);
+          
+          // Apply with fast attack
+          if (trigger > 0) {
+            visualIntensity = Math.min(1.0, visualIntensity + trigger);
           }
-
-          // Update visual intensity:
-          // 1. If there's an onset, add it to current intensity (stacking for strong beats)
-          // 2. Always apply decay to create fade-out effect
-          if (onsetStrength > 0) {
-            // Add new onset to existing intensity (cap at 1.0)
-            visualIntensity = Math.min(1.0, visualIntensity + onsetStrength * 0.8);
-          }
-
-          // Apply decay every frame
-          visualIntensity *= AUDIO_CONFIG.decayRate;
-
-          // Minimum breathing level so it's never completely flat
-          visualIntensity = Math.max(0.12, visualIntensity);
-
-          // Store current energy for next frame
-          previousEnergy = currentEnergy;
-
-          // Use visualIntensity directly (no additional smoothing needed due to decay)
+          
+          // Decay - faster (was 0.92)
+          visualIntensity *= 0.96;
+          visualIntensity = Math.max(0.1, visualIntensity);
+          
           audioIntensity = visualIntensity;
         }
       } else if (isActuallyPlaying && isIOS) {
@@ -730,29 +730,33 @@
         audioIntensity = 0.12;
       }
 
-      // Less smoothing for more responsive pulse effect
-      smoothedIntensity = smoothedIntensity + (audioIntensity - smoothedIntensity) * 0.25;
+      // Fast response - 2x speed (was 0.3)
+      smoothedIntensity = smoothedIntensity + (audioIntensity - smoothedIntensity) * 0.6;
 
-      // Calculate scale based on audio intensity - more dramatic range
+      // DRAMATIC visual effects for kick drum beats
       const baseScale = 1;
-      const maxScale = 1.2;
-      const targetScale = baseScale + smoothedIntensity * (maxScale - baseScale);
-      smoothedScale = smoothedScale + (targetScale - smoothedScale) * 0.15;
+      // REDUCED visual effects by 50% for subtler beat visualization
+      const maxScale = 1.2;  // 20% scale increase (50% of previous 40%)
+      // Use power curve for more punch
+      const amplifiedIntensity = Math.pow(smoothedIntensity, 0.6);
+      const targetScale = baseScale + amplifiedIntensity * (maxScale - baseScale);
+      smoothedScale = smoothedScale + (targetScale - smoothedScale) * 0.24; // 2x faster
 
       // Get scene color from config
       const baseColor = SCENE_COLORS[SCENES[currentSceneIndex].id] || [168, 200, 236];
 
-      // Dynamic opacity based on intensity
-      const opacity = 0.8 + smoothedIntensity * 0.15;
+      // REDUCED opacity range by 50%
+      const opacity = 0.875 + smoothedIntensity * 0.125; // 0.875 to 1.0 (narrower range)
 
-      // Dynamic glow based on intensity - smaller, more subtle range
-      const glowSize = 30 + smoothedIntensity * 60; // 30 to 90px
-      const glowAlpha = 0.4 + smoothedIntensity * 0.3; // More subtle base glow
+      // REDUCED glow effects by 50%
+      const glowSize = 20 + amplifiedIntensity * 50; // 20 to 70px (50% of 100px range)
+      const glowSpread = amplifiedIntensity * 20; // 0 to 20px spread (50% of 40px)
+      const glowAlpha = 0.35 + amplifiedIntensity * 0.25; // 0.35 to 0.6 (50% of 0.5 range)
       const glowColor = `rgba(${baseColor.join(',')}, ${glowAlpha})`;
 
       playBtn.style.transform = `scale(${smoothedScale})`;
-      playBtn.style.boxShadow = `0 0 ${glowSize}px ${smoothedIntensity * 15}px ${glowColor}`;
-      playBtn.style.borderColor = `rgba(${baseColor.join(',')}, ${0.5 + smoothedIntensity * 0.3})`;
+      playBtn.style.boxShadow = `0 0 ${glowSize}px ${glowSpread}px ${glowColor}`;
+      playBtn.style.borderColor = `rgba(${baseColor.join(',')}, ${0.4 + smoothedIntensity * 0.2})`; // Also reduced border effect
       playBtn.style.opacity = opacity;
       progressRing.style.stroke = `rgb(${baseColor.join(',')})`;
     }

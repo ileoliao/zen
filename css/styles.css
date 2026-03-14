@@ -2,7 +2,7 @@
 :root {
   --color-bg-dark: #0a0a0f;
   --color-text: #fff;
-  --color-scene-forge: #e67e22;
+  --color-scene-forge: #40e0d0;
   --color-scene-begin: #f4c569;
   --color-scene-deep: #7eb8e8;
   --color-scene-flow: #e8b84a;
@@ -81,13 +81,42 @@ body {
     radial-gradient(ellipse at 50% 50%, rgba(22, 15, 18, 1) 0%, rgba(12, 10, 12, 1) 100%);
 }
 
-/* Forge - Training/Gym atmosphere with iron glow */
+/* Forge - Mint teal with water ripple effect */
 .bg-gradient.forge {
   background:
-    radial-gradient(ellipse at 50% 50%, rgba(230, 126, 34, 0.2) 0%, transparent 60%),
-    radial-gradient(ellipse at 30% 70%, rgba(44, 62, 80, 0.3) 0%, transparent 50%),
-    radial-gradient(ellipse at 70% 30%, rgba(52, 73, 94, 0.2) 0%, transparent 55%),
-    radial-gradient(ellipse at 50% 50%, rgba(28, 28, 30, 1) 0%, rgba(15, 15, 18, 1) 100%);
+    /* Center ripple - bright teal glow */
+    radial-gradient(ellipse at 50% 50%, rgba(64, 224, 208, 0.3) 0%, transparent 45%),
+    /* First ripple ring */
+    radial-gradient(ellipse at 50% 50%, rgba(50, 200, 180, 0.15) 0%, transparent 60%),
+    /* Second ripple ring */
+    radial-gradient(ellipse at 50% 50%, rgba(40, 180, 160, 0.1) 0%, transparent 75%),
+    /* Depth shadow - deeper teal */
+    radial-gradient(ellipse at 30% 70%, rgba(30, 160, 140, 0.12) 0%, transparent 50%),
+    /* Highlight - lighter teal */
+    radial-gradient(ellipse at 70% 30%, rgba(80, 240, 220, 0.1) 0%, transparent 40%),
+    /* Base dark water depth */
+    radial-gradient(ellipse at 50% 50%, rgba(10, 30, 28, 1) 0%, rgba(5, 20, 18, 1) 100%);
+  animation: forge-water-ripple 4s ease-in-out infinite;
+}
+
+@keyframes forge-water-ripple {
+  0%, 100% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes forge-forest-breeze {
+  0%, 100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* Noise texture overlay */
@@ -277,6 +306,12 @@ body {
   opacity: 0.25;
 }
 
+/* Forge scene - mint teal water glow play button (only when playing) */
+.play-button.forge.playing {
+  box-shadow: 0 0 30px rgba(64, 224, 208, 0.45),
+              0 0 60px rgba(50, 200, 180, 0.28);
+}
+
 /* ===== Track Info ===== */
 .track-info {
   position: absolute;
@@ -304,38 +339,40 @@ body {
   letter-spacing: 0.1em;
 }
 
-/* Track switch animation */
-.track-info.switching-up {
-  animation: trackSlideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-.track-info.switching-down {
-  animation: trackSlideDown 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes trackSlideUp {
-  0% { transform: translateY(0); opacity: 0.7; }
-  100% { transform: translateY(-30px); opacity: 0; }
-}
-
-@keyframes trackSlideDown {
-  0% { transform: translateY(0); opacity: 0.7; }
-  100% { transform: translateY(30px); opacity: 0; }
-}
-
-/* Track enter animation - new content slides in smoothly */
-.track-info.entering {
-  animation: trackEnter 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-}
-
-@keyframes trackEnter {
-  0% { 
-    transform: translateY(20px); 
-    opacity: 0; 
+/* Track switch animation - Desktop only */
+@media (hover: hover) and (pointer: fine) {
+  .track-info.switching-up {
+    animation: trackSlideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   }
-  100% { 
-    transform: translateY(0); 
-    opacity: 0.7; 
+
+  .track-info.switching-down {
+    animation: trackSlideDown 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  @keyframes trackSlideUp {
+    0% { transform: translateY(0); opacity: 0.7; }
+    100% { transform: translateY(-30px); opacity: 0; }
+  }
+
+  @keyframes trackSlideDown {
+    0% { transform: translateY(0); opacity: 0.7; }
+    100% { transform: translateY(30px); opacity: 0; }
+  }
+
+  /* Track enter animation - new content slides in smoothly */
+  .track-info.entering {
+    animation: trackEnter 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  @keyframes trackEnter {
+    0% { 
+      transform: translateY(20px); 
+      opacity: 0; 
+    }
+    100% { 
+      transform: translateY(0); 
+      opacity: 0.7; 
+    }
   }
 }
 
