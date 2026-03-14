@@ -928,17 +928,11 @@
           const cumulativeDiffY = touchStartY - currentY;
 
           if (cumulativeDiffY > 30) {
-            // Swiping up - show next track preview
+            // Swiping up - show next track preview only (no visual feedback on current track)
             updateTrackPreview('up');
-            // Add slight visual feedback to current track
-            trackInfo.style.transform = `translateY(${-cumulativeDiffY * 0.3}px)`;
-            trackInfo.style.opacity = Math.max(0.3, 0.7 - cumulativeDiffY / 200);
           } else if (cumulativeDiffY < -30) {
-            // Swiping down - show prev track preview
+            // Swiping down - show prev track preview only (no visual feedback on current track)
             updateTrackPreview('down');
-            // Add slight visual feedback to current track
-            trackInfo.style.transform = `translateY(${-cumulativeDiffY * 0.3}px)`;
-            trackInfo.style.opacity = Math.max(0.3, 0.7 + cumulativeDiffY / 200);
           }
           
           ticking = false;
