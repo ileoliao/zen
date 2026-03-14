@@ -33,9 +33,8 @@
     const trackName = document.getElementById('trackName');
     const trackArtist = document.getElementById('trackArtist');
     const swipeHint = document.getElementById('swipeHint');
-    const volumeOverlay = document.getElementById('volumeOverlay');
-    const volumeFill = document.getElementById('volumeFill');
     const bgGradient = document.getElementById('bgGradient');
+    const loadingIndicator = document.getElementById('loadingIndicator');
 
     let hideTimeout;
     let touchStartX = 0;
@@ -46,6 +45,7 @@
     // Track switching variables
     let isTrackSwitching = false;
     let touchCurrentY = 0;
+    let ticking = false; // For requestAnimationFrame throttling
 
     // New DOM elements for track switching
     const trackPreviewUp = document.getElementById('trackPreviewUp');
@@ -97,61 +97,118 @@
       iosAudioPlayer.volume = DEFAULT_VOLUME;
     }
 
-    // Preload all audio using Howler
+    // Smart preload system with sliding window
     const preloadedSounds = {};
-    let musicPreloaded = false;
+    const preloadQueue = []; // 预加载队列
+    let isPreloading = false;
 
-    function preloadAllMusic() {
-      if (musicPreloaded) return;
-      musicPreloaded = true;
-
-      const allFiles = [];
-
-      // Prioritize current scene's tracks
-      const currentScene = SCENES[currentSceneIndex];
-      if (currentScene) {
-        currentScene.tracks.forEach(track => {
-          if (!allFiles.includes(track.file)) {
-            allFiles.push(track.file);
-          }
+    // Get list of tracks to preload based on sliding window strategy
+    function getTracksToPreload(sceneIndex, trackIndex, count) {
+      const scene = SCENES[sceneIndex];
+      const tracks = [];
+      
+      for (let i = 0; i < count; i++) {
+        const idx = (trackIndex + i) % scene.tracks.length;
+        tracks.push({
+          file: scene.tracks[idx].file,
+          priority: i === 0 ? 'high' : 'normal' // 当前曲目高优先级
         });
       }
+      
+      return tracks;
+    }
 
-      // Then queue the rest
-      SCENES.forEach((scene, index) => {
-        if (index === currentSceneIndex) return; // Already loaded
-        scene.tracks.forEach(track => {
-          if (!allFiles.includes(track.file)) {
-            allFiles.push(track.file);
-          }
-        });
-      });
-
-      // Start preloading in priority order
-      // On desktop, we use Howler to preload via Web Audio API.
-      // On iOS, we fetch the audio files directly into the browser's disk cache
-      // because iOS Safari refuses to preload <audio> elements before user interaction.
+    // Preload specific track with priority
+    function preloadTrack(file, priority = 'normal') {
+      if (preloadedSounds[file]) return; // Already loaded
+      
       if (isIOS) {
-        allFiles.forEach(file => {
-          fetch(`music/${file}`, { mode: 'no-cors' }).catch(err => {
-            console.warn(`Failed to pre-cache ${file} on iOS:`, err);
-          });
+        // iOS: Use fetch for disk cache
+        fetch(`music/${file}`, { mode: 'no-cors' }).catch(err => {
+          console.warn(`Failed to pre-cache ${file} on iOS:`, err);
         });
         return;
       }
 
-      allFiles.forEach(file => {
-        preloadedSounds[file] = new Howl({
-          src: [`music/${file}`],
-          html5: false, // Desktop uses Web Audio API
-          preload: true,
-          volume: DEFAULT_VOLUME,
-
-          onloaderror: function (id, err) {
-            console.error(`Failed to load ${file}:`, err);
-          }
-        });
+      // Desktop: Use Howler with streaming support
+      preloadedSounds[file] = new Howl({
+        src: [`music/${file}`],
+        html5: PRELOAD_CONFIG.enableStreaming, // Use streaming
+        preload: priority === 'high', // Only high priority auto-preload
+        volume: DEFAULT_VOLUME,
+        
+        onload: function() {
+          console.log(`Loaded: ${file}`);
+        },
+        
+        onloaderror: function(id, err) {
+          console.error(`Failed to load ${file}:`, err);
+          delete preloadedSounds[file]; // Remove from cache on error
+        }
       });
+    }
+
+    // Cleanup old preloaded sounds (keep only bufferSize tracks)
+    function cleanupPreloadedSounds(keepFiles) {
+      Object.keys(preloadedSounds).forEach(file => {
+        if (!keepFiles.includes(file)) {
+          const sound = preloadedSounds[file];
+          if (sound && !sound.playing()) {
+            sound.unload(); // Release memory
+            delete preloadedSounds[file];
+            console.log(`Unloaded: ${file}`);
+          }
+        }
+      });
+    }
+
+    // Loading indicator helpers
+    function showLoading() {
+      if (loadingIndicator) loadingIndicator.classList.add('visible');
+    }
+
+    function hideLoading() {
+      if (loadingIndicator) loadingIndicator.classList.remove('visible');
+    }
+
+    // Smart preload for current position
+    function smartPreload() {
+      const tracks = getTracksToPreload(
+        currentSceneIndex, 
+        currentTrackIndex, 
+        PRELOAD_CONFIG.bufferSize
+      );
+      
+      const keepFiles = tracks.map(t => t.file);
+      
+      // Cleanup old sounds
+      cleanupPreloadedSounds(keepFiles);
+      
+      // Preload new tracks with priority
+      tracks.forEach((track, index) => {
+        setTimeout(() => {
+          preloadTrack(track.file, track.priority);
+        }, index * 200); // Stagger loading to avoid overwhelming
+      });
+    }
+
+    // Preload scene tracks on switch
+    function preloadScene(sceneIndex) {
+      const scene = SCENES[sceneIndex];
+      const count = Math.min(PRELOAD_CONFIG.scenePreloadCount, scene.tracks.length);
+      
+      for (let i = 0; i < count; i++) {
+        const file = scene.tracks[i].file;
+        setTimeout(() => {
+          preloadTrack(file, i === 0 ? 'high' : 'normal');
+        }, i * 300);
+      }
+    }
+
+    // Legacy function for compatibility
+    function preloadAllMusic() {
+      // Now uses smartPreload instead
+      smartPreload();
     }
 
     function getSceneByTime() {
@@ -180,21 +237,32 @@
       // Update background gradient based on scene - smooth transition
       if (bgGradient) {
         // Remove old scene classes
-        bgGradient.classList.remove('begin', 'deep', 'flow', 'unwind');
+        bgGradient.classList.remove('forge', 'begin', 'deep', 'flow', 'unwind');
         // Add new scene class
         bgGradient.classList.add(scene.id);
       }
 
       currentTrackIndex = 0;
       loadTrack();
+
+      // Preload first few tracks of new scene
+      setTimeout(() => preloadScene(index), 500);
     }
 
     function loadTrack() {
       const scene = SCENES[currentSceneIndex];
       const track = scene.tracks[currentTrackIndex];
 
+      // Add enter animation for smooth transition
+      trackInfo.classList.add('entering');
+      
       trackName.textContent = track.title;
       trackArtist.textContent = track.artist;
+
+      // Remove entering animation after it completes
+      setTimeout(() => {
+        trackInfo.classList.remove('entering');
+      }, 300);
 
       // Stop current playback without unloading (keep preloaded sounds)
       if (isIOS) {
@@ -230,6 +298,9 @@
           currentHowl.on('end', onTrackEnd);
         }
       }
+
+      // Trigger smart preload for next tracks
+      setTimeout(() => smartPreload(), 100);
     }
 
     // Create Howl on demand (only called during user interaction)
@@ -302,53 +373,48 @@
       const scene = SCENES[currentSceneIndex];
       const totalTracks = scene.tracks.length;
       
-      if (currentTrackIndex < totalTracks - 1) {
-        // Animate out
-        trackInfo.classList.add('switching-up');
+      // Loop: last track's next is first track
+      const nextIndex = (currentTrackIndex + 1) % totalTracks;
+      
+      // Animate out
+      trackInfo.classList.add('switching-up');
+      
+      setTimeout(() => {
+        currentTrackIndex = nextIndex;
+        loadTrack();
         
-        setTimeout(() => {
-          currentTrackIndex++;
-          loadTrack();
-          
-          // Reset animation
-          trackInfo.classList.remove('switching-up');
-          
-          // Auto-play if timer is running
-          if (pomodoroIsRunning) {
-            startPlayback();
-          }
-        }, 350);
-      } else {
-        // Boundary feedback
-        showBoundaryHint('last');
-        trackInfo.classList.add('bounce-up');
-        setTimeout(() => trackInfo.classList.remove('bounce-up'), 300);
-      }
+        // Reset animation
+        trackInfo.classList.remove('switching-up');
+        
+        // Auto-play if timer is running
+        if (pomodoroIsRunning) {
+          startPlayback();
+        }
+      }, 350);
     }
 
     function prevTrack() {
-      if (currentTrackIndex > 0) {
-        // Animate out
-        trackInfo.classList.add('switching-down');
+      const scene = SCENES[currentSceneIndex];
+      const totalTracks = scene.tracks.length;
+      
+      // Loop: first track's prev is last track
+      const prevIndex = (currentTrackIndex - 1 + totalTracks) % totalTracks;
+      
+      // Animate out
+      trackInfo.classList.add('switching-down');
+      
+      setTimeout(() => {
+        currentTrackIndex = prevIndex;
+        loadTrack();
         
-        setTimeout(() => {
-          currentTrackIndex--;
-          loadTrack();
-          
-          // Reset animation
-          trackInfo.classList.remove('switching-down');
-          
-          // Auto-play if timer is running
-          if (pomodoroIsRunning) {
-            startPlayback();
-          }
-        }, 350);
-      } else {
-        // Boundary feedback
-        showBoundaryHint('first');
-        trackInfo.classList.add('bounce-down');
-        setTimeout(() => trackInfo.classList.remove('bounce-down'), 300);
-      }
+        // Reset animation
+        trackInfo.classList.remove('switching-down');
+        
+        // Auto-play if timer is running
+        if (pomodoroIsRunning) {
+          startPlayback();
+        }
+      }, 350);
     }
 
     function updateTrackPreview(direction) {
@@ -356,20 +422,16 @@
       const totalTracks = scene.tracks.length;
       
       if (direction === 'up') {
-        if (currentTrackIndex < totalTracks - 1) {
-          previewNameUp.textContent = scene.tracks[currentTrackIndex + 1].title;
-          trackPreviewUp.classList.add('visible');
-        } else {
-          trackPreviewUp.classList.remove('visible');
-        }
+        // Loop: show first track when at last track
+        const nextIndex = (currentTrackIndex + 1) % totalTracks;
+        previewNameUp.textContent = scene.tracks[nextIndex].title;
+        trackPreviewUp.classList.add('visible');
         trackPreviewDown.classList.remove('visible');
       } else if (direction === 'down') {
-        if (currentTrackIndex > 0) {
-          previewNameDown.textContent = scene.tracks[currentTrackIndex - 1].title;
-          trackPreviewDown.classList.add('visible');
-        } else {
-          trackPreviewDown.classList.remove('visible');
-        }
+        // Loop: show last track when at first track
+        const prevIndex = (currentTrackIndex - 1 + totalTracks) % totalTracks;
+        previewNameDown.textContent = scene.tracks[prevIndex].title;
+        trackPreviewDown.classList.add('visible');
         trackPreviewUp.classList.remove('visible');
       }
     }
@@ -403,6 +465,7 @@
 
     function startPlayback() {
       playBtn.classList.add('loading');
+      showLoading();
 
       // 1. Desktop: Web Audio Context Resurrection
       if (!isIOS) {
@@ -476,6 +539,7 @@
     function onPlaybackStart() {
       isPlaying = true;
       playBtn.classList.remove('loading');
+      hideLoading();
       playIcon.style.display = 'none';
       pauseIcon.style.display = 'block';
       playBtn.classList.add('playing');
@@ -850,16 +914,10 @@
       touchCurrentY = touchStartY;
       touchStartTime = Date.now();
       isTrackSwitching = false;
-
-      longPressTimer = setTimeout(() => {
-        volumeOverlay.classList.add('active');
-      }, GESTURE_CONFIG.longPressDelay);
     }, { passive: true });
 
     document.addEventListener('touchmove', (e) => {
       clearTimeout(longPressTimer);
-
-      if (volumeOverlay.classList.contains('active')) return;
 
       const currentY = e.touches[0].clientY;
       const diffY = touchStartY - currentY;
@@ -869,24 +927,30 @@
         isTrackSwitching = true;
       }
 
-      // Show preview during vertical swipe
-      if (isTrackSwitching) {
-        touchCurrentY = currentY;
-        const cumulativeDiffY = touchStartY - currentY;
+      // Show preview during vertical swipe with throttling
+      if (isTrackSwitching && !ticking) {
+        ticking = true;
+        
+        requestAnimationFrame(() => {
+          touchCurrentY = currentY;
+          const cumulativeDiffY = touchStartY - currentY;
 
-        if (cumulativeDiffY > 30) {
-          // Swiping up - show next track preview
-          updateTrackPreview('up');
-          // Add slight visual feedback to current track
-          trackInfo.style.transform = `translateY(${-cumulativeDiffY * 0.3}px)`;
-          trackInfo.style.opacity = Math.max(0.3, 0.7 - cumulativeDiffY / 200);
-        } else if (cumulativeDiffY < -30) {
-          // Swiping down - show prev track preview
-          updateTrackPreview('down');
-          // Add slight visual feedback to current track
-          trackInfo.style.transform = `translateY(${-cumulativeDiffY * 0.3}px)`;
-          trackInfo.style.opacity = Math.max(0.3, 0.7 + cumulativeDiffY / 200);
-        }
+          if (cumulativeDiffY > 30) {
+            // Swiping up - show next track preview
+            updateTrackPreview('up');
+            // Add slight visual feedback to current track
+            trackInfo.style.transform = `translateY(${-cumulativeDiffY * 0.3}px)`;
+            trackInfo.style.opacity = Math.max(0.3, 0.7 - cumulativeDiffY / 200);
+          } else if (cumulativeDiffY < -30) {
+            // Swiping down - show prev track preview
+            updateTrackPreview('down');
+            // Add slight visual feedback to current track
+            trackInfo.style.transform = `translateY(${-cumulativeDiffY * 0.3}px)`;
+            trackInfo.style.opacity = Math.max(0.3, 0.7 + cumulativeDiffY / 200);
+          }
+          
+          ticking = false;
+        });
       }
     }, { passive: true });
 
@@ -897,11 +961,6 @@
       trackInfo.style.transform = '';
       trackInfo.style.opacity = '';
       hideTrackPreview();
-
-      if (volumeOverlay.classList.contains('active')) {
-        setTimeout(() => volumeOverlay.classList.remove('active'), 1500);
-        return;
-      }
 
       const touchEndX = e.changedTouches[0].clientX;
       const touchEndY = e.changedTouches[0].clientY;
@@ -933,29 +992,6 @@
       }
 
       isTrackSwitching = false;
-    }, { passive: true });
-
-    // Volume control
-    function setVolumeFromTouch(clientY) {
-      const rect = document.getElementById('volumeSlider').getBoundingClientRect();
-      const percent = 1 - ((clientY - rect.top) / rect.height);
-      const volume = Math.max(0, Math.min(1, percent));
-
-      if (isIOS) {
-        iosAudioPlayer.volume = volume;
-      } else if (currentHowl) {
-        currentHowl.volume(volume);
-      }
-
-      volumeFill.style.height = (volume * 100) + '%';
-    }
-
-    volumeOverlay.addEventListener('touchstart', (e) => {
-      setVolumeFromTouch(e.touches[0].clientY);
-    }, { passive: true });
-
-    volumeOverlay.addEventListener('touchmove', (e) => {
-      setVolumeFromTouch(e.touches[0].clientY);
     }, { passive: true });
 
     // Mouse click to show UI (exclude play button)

@@ -2,6 +2,7 @@
 :root {
   --color-bg-dark: #0a0a0f;
   --color-text: #fff;
+  --color-scene-forge: #e67e22;
   --color-scene-begin: #f4c569;
   --color-scene-deep: #7eb8e8;
   --color-scene-flow: #e8b84a;
@@ -78,6 +79,15 @@ body {
     radial-gradient(ellipse at 55% 60%, rgba(160, 90, 70, 0.15) 0%, transparent 55%),
     radial-gradient(ellipse at 30% 25%, rgba(140, 100, 120, 0.12) 0%, transparent 65%),
     radial-gradient(ellipse at 50% 50%, rgba(22, 15, 18, 1) 0%, rgba(12, 10, 12, 1) 100%);
+}
+
+/* Forge - Training/Gym atmosphere with iron glow */
+.bg-gradient.forge {
+  background:
+    radial-gradient(ellipse at 50% 50%, rgba(230, 126, 34, 0.2) 0%, transparent 60%),
+    radial-gradient(ellipse at 30% 70%, rgba(44, 62, 80, 0.3) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 30%, rgba(52, 73, 94, 0.2) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 50%, rgba(28, 28, 30, 1) 0%, rgba(15, 15, 18, 1) 100%);
 }
 
 /* Noise texture overlay */
@@ -157,6 +167,7 @@ body {
   transition: color 0.6s ease;
 }
 
+.scene-name.forge { color: var(--color-scene-forge); }
 .scene-name.begin { color: var(--color-scene-begin); }
 .scene-name.deep { color: var(--color-scene-deep); }
 .scene-name.flow { color: var(--color-scene-flow); }
@@ -312,6 +323,22 @@ body {
   100% { transform: translateY(30px); opacity: 0; }
 }
 
+/* Track enter animation - new content slides in smoothly */
+.track-info.entering {
+  animation: trackEnter 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes trackEnter {
+  0% { 
+    transform: translateY(20px); 
+    opacity: 0; 
+  }
+  100% { 
+    transform: translateY(0); 
+    opacity: 0.7; 
+  }
+}
+
 /* Track preview cards */
 .track-preview {
   position: absolute;
@@ -393,51 +420,46 @@ body {
   opacity: 1;
 }
 
-/* ===== Volume Overlay ===== */
-.volume-overlay {
+/* ===== Loading Indicator ===== */
+.loading-indicator {
   position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(10px);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  gap: 4px;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.4s ease;
+  transition: opacity 0.3s ease;
 }
 
-.volume-overlay.active {
+.loading-indicator.visible {
   opacity: 1;
-  pointer-events: all;
 }
 
-.volume-slider-vertical {
+.loading-dot {
   width: 4px;
-  height: 200px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  position: relative;
-  cursor: pointer;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  animation: loading-bounce 1s ease-in-out infinite;
 }
 
-.volume-fill {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: #fff;
-  border-radius: 2px;
-  transition: height 0.1s ease;
+.loading-dot:nth-child(2) {
+  animation-delay: 0.1s;
 }
 
-.volume-label {
-  margin-top: 24px;
-  font-size: 11px;
-  letter-spacing: 0.2em;
-  color: rgba(255, 255, 255, 0.5);
-  text-transform: uppercase;
+.loading-dot:nth-child(3) {
+  animation-delay: 0.2s;
+}
+
+@keyframes loading-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
 }
 
 /* ===== Timer Display ===== */
