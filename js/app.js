@@ -382,12 +382,12 @@
       setTimeout(() => {
         currentTrackIndex = nextIndex;
         loadTrack();
-        
+
         // Reset animation
         trackInfo.classList.remove('switching-up');
-        
-        // Auto-play if timer is running
-        if (pomodoroIsRunning) {
+
+        // Auto-play if music was playing
+        if (isPlaying) {
           startPlayback();
         }
       }, 350);
@@ -396,22 +396,22 @@
     function prevTrack() {
       const scene = SCENES[currentSceneIndex];
       const totalTracks = scene.tracks.length;
-      
+
       // Loop: first track's prev is last track
       const prevIndex = (currentTrackIndex - 1 + totalTracks) % totalTracks;
-      
+
       // Animate out
       trackInfo.classList.add('switching-down');
-      
+
       setTimeout(() => {
         currentTrackIndex = prevIndex;
         loadTrack();
-        
+
         // Reset animation
         trackInfo.classList.remove('switching-down');
-        
-        // Auto-play if timer is running
-        if (pomodoroIsRunning) {
+
+        // Auto-play if music was playing
+        if (isPlaying) {
           startPlayback();
         }
       }, 350);
@@ -598,13 +598,17 @@
 
     function nextScene() {
       loadScene((currentSceneIndex + 1) % SCENES.length);
-      play();
+      if (isPlaying) {
+        play();
+      }
       showUI();
     }
 
     function prevScene() {
       loadScene((currentSceneIndex - 1 + SCENES.length) % SCENES.length);
-      play();
+      if (isPlaying) {
+        play();
+      }
       showUI();
     }
 

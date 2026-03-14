@@ -84,7 +84,7 @@ const SCENES = [
 
 // Theme colors for each scene
 const SCENE_COLORS = {
-  forge: [255, 200, 50],    // Energy gold - vibrant and powerful
+  forge: [64, 224, 208],    // Mint teal - fresh energy with water ripple
   begin: [244, 197, 105],   // Golden sunrise
   deep: [126, 184, 232],    // Deep blue
   flow: [232, 184, 74],     // Amber
