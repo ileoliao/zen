@@ -256,16 +256,9 @@
       // Always hide track preview when loading a new track
       hideTrackPreview();
 
-      // Add enter animation for smooth transition
-      trackInfo.classList.add('entering');
-      
+      // Direct update without animation
       trackName.textContent = track.title;
       trackArtist.textContent = track.artist;
-
-      // Remove entering animation after it completes
-      setTimeout(() => {
-        trackInfo.classList.remove('entering');
-      }, 300);
 
       // Stop current playback without unloading (keep preloaded sounds)
       if (isIOS) {
@@ -375,21 +368,14 @@
       // Loop: last track's next is first track
       const nextIndex = (currentTrackIndex + 1) % totalTracks;
       
-      // Animate out
-      trackInfo.classList.add('switching-up');
-      
-      setTimeout(() => {
-        currentTrackIndex = nextIndex;
-        loadTrack();
+      // Direct switch without animation
+      currentTrackIndex = nextIndex;
+      loadTrack();
 
-        // Reset animation
-        trackInfo.classList.remove('switching-up');
-
-        // Auto-play if music was playing
-        if (isPlaying) {
-          startPlayback(); // No need to reconnect analyser, masterGain stays connected
-        }
-      }, 350);
+      // Auto-play if music was playing
+      if (isPlaying) {
+        startPlayback();
+      }
     }
 
     function prevTrack() {
@@ -402,21 +388,14 @@
       // Loop: first track's prev is last track
       const prevIndex = (currentTrackIndex - 1 + totalTracks) % totalTracks;
 
-      // Animate out
-      trackInfo.classList.add('switching-down');
+      // Direct switch without animation
+      currentTrackIndex = prevIndex;
+      loadTrack();
 
-      setTimeout(() => {
-        currentTrackIndex = prevIndex;
-        loadTrack();
-
-        // Reset animation
-        trackInfo.classList.remove('switching-down');
-
-        // Auto-play if music was playing
-        if (isPlaying) {
-          startPlayback(); // No need to reconnect analyser, masterGain stays connected
-        }
-      }, 350);
+      // Auto-play if music was playing
+      if (isPlaying) {
+        startPlayback();
+      }
     }
 
     function updateTrackPreview(direction) {
