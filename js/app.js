@@ -408,18 +408,32 @@
         previewNameUp.textContent = scene.tracks[nextIndex].title;
         trackPreviewUp.classList.add('visible', 'up');
         trackPreviewDown.classList.remove('visible', 'down');
+        // Ensure display is visible
+        trackPreviewUp.style.display = '';
+        trackPreviewDown.style.display = '';
       } else if (direction === 'down') {
         // Loop: show last track when at first track
         const prevIndex = (currentTrackIndex - 1 + totalTracks) % totalTracks;
         previewNameDown.textContent = scene.tracks[prevIndex].title;
         trackPreviewDown.classList.add('visible', 'down');
         trackPreviewUp.classList.remove('visible', 'up');
+        // Ensure display is visible
+        trackPreviewUp.style.display = '';
+        trackPreviewDown.style.display = '';
       }
     }
 
     function hideTrackPreview() {
       trackPreviewUp.classList.remove('visible', 'up');
       trackPreviewDown.classList.remove('visible', 'down');
+      // Force hide with inline styles
+      trackPreviewUp.style.display = 'none';
+      trackPreviewDown.style.display = 'none';
+    }
+    
+    function showTrackPreview() {
+      trackPreviewUp.style.display = '';
+      trackPreviewDown.style.display = '';
     }
 
     function showBoundaryHint(position) {
@@ -946,7 +960,6 @@
       // Reset track info transform
       trackInfo.style.transform = '';
       trackInfo.style.opacity = '';
-      hideTrackPreview();
 
       const touchEndX = e.changedTouches[0].clientX;
       const touchEndY = e.changedTouches[0].clientY;
@@ -964,6 +977,8 @@
         } else {
           prevTrack(); // Swipe down = prev track
         }
+        // Force hide preview after track switch
+        hideTrackPreview();
         showUI();
       } else if (isHorizontalSwipe && Math.abs(diffX) > GESTURE_CONFIG.sceneSwitchThreshold) {
         // Horizontal swipe - switch scenes
@@ -972,10 +987,14 @@
         } else {
           prevScene();
         }
+        showUI();
       } else if (Math.abs(diffX) < 30 && Math.abs(diffY) < 30) {
         // Tap - show UI
         showUI();
       }
+      
+      // Always hide preview on touch end (as safety)
+      hideTrackPreview();
 
       isTrackSwitching = false;
     }, { passive: true });
