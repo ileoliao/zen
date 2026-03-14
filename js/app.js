@@ -406,20 +406,20 @@
         // Loop: show first track when at last track
         const nextIndex = (currentTrackIndex + 1) % totalTracks;
         previewNameUp.textContent = scene.tracks[nextIndex].title;
-        trackPreviewUp.classList.add('visible');
-        trackPreviewDown.classList.remove('visible');
+        trackPreviewUp.classList.add('visible', 'up');
+        trackPreviewDown.classList.remove('visible', 'down');
       } else if (direction === 'down') {
         // Loop: show last track when at first track
         const prevIndex = (currentTrackIndex - 1 + totalTracks) % totalTracks;
         previewNameDown.textContent = scene.tracks[prevIndex].title;
-        trackPreviewDown.classList.add('visible');
-        trackPreviewUp.classList.remove('visible');
+        trackPreviewDown.classList.add('visible', 'down');
+        trackPreviewUp.classList.remove('visible', 'up');
       }
     }
 
     function hideTrackPreview() {
-      trackPreviewUp.classList.remove('visible');
-      trackPreviewDown.classList.remove('visible');
+      trackPreviewUp.classList.remove('visible', 'up');
+      trackPreviewDown.classList.remove('visible', 'down');
     }
 
     function showBoundaryHint(position) {
